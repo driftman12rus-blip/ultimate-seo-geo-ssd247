@@ -1,15 +1,21 @@
 # Changelog
 
-## [1.21.0] - 2026-09-23
+## [1.21.0] - 2026-09-27
 
-Search Console data now says what to fix. A new script, `gsc_insights.py`, turns query x page
-rows into five ranked lists. `generate_report.py` joins page clicks to every finding, so the
-action plan can order work by traffic. `index_coverage_diff.py` compares two weekly Page indexing
-exports and names the one change to investigate. `internal_links.py` audits in-content anchor
-text from the shared site graph, `report_lint.py` holds a written audit to one next action and
-no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong brand facts, and
-`link_opportunities.py` finds the pages that should link to a money page, and
-`redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
+Search data and the site's crawl now say what to fix. It covers Search Console, GA4 and the
+shared site graph. `gsc_insights.py` turns query x page rows into ranked lists (striking distance, low CTR against
+the site's own curve, cannibalisation, decay, a serve map), reports figures on a human-only
+basis with machine queries set aside, and tells machine topic spikes from real interest.
+`generate_report.py` joins page clicks to every finding so the action plan can order work by
+traffic, and `google_auth.py` signs every user in to Search Console once. New checks:
+`index_coverage_diff.py` (Page indexing week over week), `link_opportunities.py`,
+`redirect_checker.py --graph`, an in-content anchor audit in `internal_links.py`, brand facts in
+AI answers (`citation_sampling.py --facts`), a GA4 conversion audit (`ga4_audit.py`), demo
+requests reconciled across two sources (`conversion_reconcile.py`) and the first-party write
+endpoints and tag load of a rendered page (`page_network.py`). `report_lint.py` now holds a
+written audit to one next action and no unsourced numbers. Minor per D-020: new capability. The
+Health Score is unchanged. Known limit: the bundled OAuth client is empty, so `google_auth.py
+login` needs `--client-secrets` until the maintainer's client ships.
 
 ### Added
 - **Topic spikes: `gsc_insights.py --topic-spikes`.** Topics whose impressions jumped since the
