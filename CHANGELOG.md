@@ -12,6 +12,32 @@ no unsourced numbers, `citation_sampling.py --facts` checks AI answers for wrong
 `redirect_checker.py --graph` ranks every internal link that redirects. Minor per D-020: new capability. Nothing about the score changes.
 
 ### Added
+- **Topic spikes: `gsc_insights.py --topic-spikes`.** Topics whose impressions jumped since the
+  previous window. A query spikes at 20+ impressions and 5x the previous window. Spiking
+  queries are grouped by the term covering the most impressions, and clusters merge when
+  either's top term is among the other's top four. Each topic gets a verdict:
+  - **machine-suspect:** 80%+ of its impressions already machine or agent-like, or the rest
+    fall short of a human floor CTR at Poisson P < 1e-6;
+  - **real interest:** clicks doubled, reached 10, and reached what people bring at the floor
+    CTR;
+  - **unclear:** anything else.
+
+  Each topic lists the pages Google showed and its top queries. Queries of a machine-suspect
+  topic that the per-query rules left as human are set aside too (`spike_topic`), so the
+  human basis and the other analyses drop them. Findings: `topic_spike_non_human` (Decision)
+  and `topic_spike_real_interest` (opportunity). `--all` includes it.
+
+  Built on 28,768 real Improvado query rows:
+  - the ad-fraud topic is found as one: 36 queries, 1,836 -> 1,052,907 impressions, 1 click;
+  - a news topic ('astra / claude fable', 0 -> 13,089 impressions, 268 clicks) is found as
+    real interest;
+  - the share of the Aug-Sep position gain that is non-human moves from 56% to 62%.
+
+  The real data shaped two rules. First, "ad fraud" and "click fraud" split until the merge
+  looked past the top two terms. Second, a topic with 11 clicks on 42k impressions was called
+  real interest until clicks had to reach the floor expectation too. What it does not
+  explain: on the human basis, the median CTR at position 3 is still 0% (84% of those
+  queries have no clicks in both windows). That is structural, not a spike.
 - **What a rendered page calls: `page_network.py`.** `render_page.py --network` now
   records every request a page makes. URLs are kept without query strings, since tracker
   hits carry emails and IDs, and no header value is kept except CORS and content type.

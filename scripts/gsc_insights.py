@@ -15,6 +15,9 @@ five analyses over them:
                        trend, not one bad month), tagged "seasonal" when the
                        same windows a year earlier fell the same way
   --serve-map CSV      the page you intend for a query vs the page Google shows
+  --topic-spikes       topics whose impressions jumped since the previous window, each
+                       called real interest (clicks rose with them) or machine-suspect
+                       (clicks people cannot fall that short of), with the pages shown
   --human-basis        blended vs human-only impressions, CTR and position, now and
                        against the previous window, with the queries and pages that
                        machine traffic (rank trackers, scrapers, agents) inflates
@@ -84,6 +87,20 @@ HUMAN_CTR_FLOOR = ((3.0, 0.002), (10.0, 0.001), (20.0, 0.0005))  # (max position
 IMPOSSIBLE_MIN_IMPRESSIONS = 500
 IMPOSSIBLE_P = 1e-6            # Poisson P(clicks <= observed) under the floor
 AGENT_MIN_WORDS = 12
+
+# Topic spikes. A query spikes when it has SPIKE_QUERY_MIN impressions now and at least
+# SPIKE_GROWTH times the previous window; spiking queries are grouped by the term that covers
+# the most impressions, then clusters are merged when either's top term is among the other's top four. On Improvado
+# (Aug 18-31 vs Sep 2-15 2026) this finds the ad-fraud topic (1.7k -> 948k impressions, 1
+# click) and a real news topic (0 -> 13k impressions, 268 clicks) that no per-query rule sees.
+SPIKE_QUERY_MIN = 20
+SPIKE_GROWTH = 5.0
+SPIKE_MIN_QUERIES = 3
+SPIKE_MIN_SHARE = 0.0025      # of the site's impressions this window
+SPIKE_MIN_IMPRESSIONS = 1000
+SPIKE_STOPWORDS = frozenset(
+    "a an the of for to in on and or with vs is are what how best top free your my by from at as be do does can "
+    "which why who when where 2023 2024 2025 2026 2027".split())
 
 LIMITS = [
     "Search Console omits anonymised queries: query rows do not sum to page totals.",
@@ -470,6 +487,108 @@ def human_basis(rows: list, labels: dict, previous_rows=None, previous_labels=No
     return out
 
 
+def _terms(query: str) -> set:
+    words = [w[:-1] if len(w) > 4 and w.endswith("s") else w for w in re.findall(r"[a-z0-9]+", str(query).lower())]
+    words = [w for w in words if w not in SPIKE_STOPWORDS and len(w) > 1]
+    return set(words) | {f"{a} {b}" for a, b in zip(words, words[1:])}
+
+
+def _label(queries: set, totals: dict, n: int = 4) -> list:
+    weight = {}
+    for q in queries:
+        for t in _terms(totals[q]["query"]):
+            weight[t] = weight.get(t, 0) + totals[q]["impressions"]
+    return [t for t, _ in sorted(weight.items(), key=lambda kv: (-kv[1], kv[0]))[:n]]
+
+
+def topic_spikes(rows: list, previous_rows: list, labels: dict, *, limit=DEFAULT_LIMIT) -> dict:
+    """Topics whose impressions jumped since the previous window, with a verdict per topic.
+
+    machine-suspect: at least 80% of the topic's impressions are already machine or agent-like
+    queries, or the rest earned fewer clicks than a human floor allows (Poisson P < 1e-6).
+    real interest: clicks at least doubled, reached 10, and reached the floor-CTR expectation. Anything
+    else is unclear.
+    """
+    now = classify_queries(rows)
+    before = classify_queries(previous_rows)
+    site = sum(t["impressions"] for t in now.values())
+    floor_imp = max(SPIKE_MIN_IMPRESSIONS, SPIKE_MIN_SHARE * site)
+    spiking = {q for q, t in now.items() if t["impressions"] >= SPIKE_QUERY_MIN
+               and t["impressions"] >= SPIKE_GROWTH * before.get(q, {}).get("impressions", 0)}
+    by_term = {}
+    for q in spiking:
+        for term in _terms(now[q]["query"]):
+            by_term.setdefault(term, set()).add(q)
+    clusters, covered = [], set()
+    while True:
+        best = None
+        for term, qs in by_term.items():
+            left = qs - covered
+            if len(left) < SPIKE_MIN_QUERIES:
+                continue
+            imp = sum(now[q]["impressions"] for q in left)
+            if best is None or imp > best[1] or (imp == best[1] and term < best[0]):
+                best = (term, imp, left)
+        if best is None or best[1] < floor_imp:
+            break
+        covered |= best[2]
+        clusters.append(set(best[2]))
+    merged = True
+    while merged:  # 'ad fraud' and 'click fraud' are one topic: merge when either's top term is in the other's top four
+        merged = False
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                li, lj = _label(clusters[i], now), _label(clusters[j], now)
+                if li and lj and (li[0] in lj or lj[0] in li):
+                    clusters[i] |= clusters.pop(j)
+                    merged = True
+                    break
+            if merged:
+                break
+    pages_by_query = {}
+    for r in rows:
+        pages_by_query.setdefault(str(r.get("query", "")).lower(), []).append(r)
+    items = []
+    for qs in clusters:
+        imp_now = sum(now[q]["impressions"] for q in qs)
+        clicks_now = sum(now[q]["clicks"] for q in qs)
+        imp_before = sum(before.get(q, {}).get("impressions", 0) for q in qs)
+        clicks_before = sum(before.get(q, {}).get("clicks", 0) for q in qs)
+        non_human = sum(now[q]["impressions"] for q in qs if labels.get(q, {}).get("label", "human") != "human")
+        human_qs = [q for q in qs if labels.get(q, {}).get("label", "human") == "human"]
+        expected = sum((human_ctr_floor(now[q]["position"]) or 0) * now[q]["impressions"] for q in human_qs)
+        p_value = _poisson_cdf(sum(now[q]["clicks"] for q in human_qs), expected)
+        if imp_now and (non_human / imp_now >= 0.8 or p_value < IMPOSSIBLE_P):
+            verdict = "machine-suspect"
+        elif clicks_now >= max(10, 2 * clicks_before, expected):  # and at least what people bring at the floor CTR
+            verdict = "real interest"
+        else:
+            verdict = "unclear"
+        page_imp = {}
+        for q in qs:
+            for r in pages_by_query.get(q, []):
+                page_imp[r["page"]] = page_imp.get(r["page"], 0) + r["impressions"]
+        items.append({
+            "topic": _label(qs, now), "verdict": verdict, "queries": len(qs),
+            "impressions": {"before": imp_before, "now": imp_now}, "clicks": {"before": clicks_before, "now": clicks_now},
+            "share_of_site_impressions": round(imp_now / site, 4) if site else None,
+            "non_human_share": round(non_human / imp_now, 3) if imp_now else None,
+            "human_click_test": {"expected_at_floor": round(expected, 1), "p": float(f"{p_value:.3g}")},
+            "position": round(sum(now[q]["position"] * now[q]["impressions"] for q in qs) / imp_now, 1) if imp_now else None,
+            "pages": [{"page": p, "impressions": n} for p, n in sorted(page_imp.items(), key=lambda kv: -kv[1])[:5]],
+            "top_queries": [now[q]["query"] for q in sorted(qs, key=lambda q: -now[q]["impressions"])[:5]],
+            "_members": sorted(qs),
+        })
+    items.sort(key=lambda i: -(i["impressions"]["now"] - i["impressions"]["before"]))
+    return {
+        "criteria": (f"a query spikes at {SPIKE_QUERY_MIN}+ impressions and {SPIKE_GROWTH:g}x the previous window; "
+                     f"a topic needs {SPIKE_MIN_QUERIES}+ spiking queries and {floor_imp:,.0f}+ impressions"),
+        "count": len(items),
+        "items": items[:limit],
+        "_all": items,
+    }
+
+
 def cannibalization(rows: list, *, min_impressions=CANNIBAL_MIN_IMPRESSIONS, min_share=CANNIBAL_MIN_SHARE,
                     limit=DEFAULT_LIMIT) -> dict:
     by_query = {}
@@ -768,6 +887,43 @@ def build_issues(results: dict, window_text: str) -> list:
             "leading_indicator": "Blended minus human position and the non-human impression share, re-read each window.",
             "urls": [p["page"] for p in hb["pages_mostly_non_human"]],
         })
+    ts = results.get("topic_spikes") or {}
+    suspect = [i for i in ts.get("items", []) if i["verdict"] == "machine-suspect"]
+    real = [i for i in ts.get("items", []) if i["verdict"] == "real interest"]
+    if suspect:
+        top = suspect[0]
+        issues.append({
+            "code": "topic_spike_non_human", "severity": "medium", "kind": "defect", "lane": "Decision",
+            "finding": (f"{len(suspect)} topic{'s' if len(suspect) != 1 else ''} jumped in impressions without the clicks people "
+                        f"would bring; largest: '{' / '.join(top['topic'][:2])}' {top['impressions']['before']:,} -> "
+                        f"{top['impressions']['now']:,} impressions, {top['clicks']['now']} clicks ({window_text})."),
+            "evidence": "; ".join(f"'{' / '.join(i['topic'][:2])}': {i['queries']} queries, {i['impressions']['now']:,} impressions, "
+                                  f"{i['clicks']['now']} clicks, {i['non_human_share']:.0%} already machine" for i in suspect[:3]),
+            "impact": "A topic like this moves site-level impressions, CTR and position on its own; its pages look like winners and are not.",
+            "fix": ("Read site trends on the human basis. For the pages listed, decide whether the topic belongs on the site; "
+                    "no on-page change stops the queries, and removing or redirecting a page is high-risk: confirm first."),
+            "confidence": "Likely",
+            "falsifiability": "Wrong if the topic's clicks arrive once Search Console back-fills the window, or its pages sit in a feature that shows and is not clicked.",
+            "leading_indicator": "The topic's impressions and clicks, next window.",
+            "urls": [p["page"] for i in suspect for p in i["pages"][:3]],
+        })
+    if real:
+        top = real[0]
+        issues.append({
+            "code": "topic_spike_real_interest", "severity": "low", "kind": "opportunity", "lane": "Assisted",
+            "finding": (f"People are searching '{' / '.join(top['topic'][:2])}' far more: {top['impressions']['before']:,} -> "
+                        f"{top['impressions']['now']:,} impressions and {top['clicks']['before']} -> {top['clicks']['now']} clicks "
+                        f"({window_text})" + (f"; {len(real) - 1} more topics rising with clicks." if len(real) > 1 else ".")),
+            "evidence": "; ".join(f"'{' / '.join(i['topic'][:2])}': top queries {', '.join(repr(q) for q in i['top_queries'][:3])}"
+                                  for i in real[:3]),
+            "impact": "Demand arriving now: the pages already ranking for it can be extended while the interest lasts.",
+            "fix": ("Check which page serves the topic (pages listed), answer the rising queries on it directly, and link to it "
+                    "from the pages that already rank; write a dedicated page only if none fits."),
+            "confidence": "Likely",
+            "falsifiability": "Wrong if the spike is a one-off news event that fades within two windows.",
+            "leading_indicator": "The topic's clicks over the next two windows.",
+            "urls": [p["page"] for i in real for p in i["pages"][:3]],
+        })
     sm = results.get("serve_map")
     if sm and sm["count"]:
         issues.append({
@@ -792,12 +948,26 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
     qp_block = dataset.get("query_page") or {}
     all_rows = _merge_query_page(_rows(qp_block))
     labels = classify_queries(all_rows)
+    prev_block = dataset.get("query_page_previous")
+    prev_rows = _merge_query_page(_rows(prev_block)) if prev_block is not None else None
+    results = {}
+    if prev_rows is not None and {"topic_spikes", "human_basis"} & set(selected):
+        spikes = topic_spikes(all_rows, prev_rows, labels, limit=limit)
+        # Queries of a machine-suspect topic that the per-query rules left as human are set aside too.
+        for item in spikes.pop("_all"):
+            if item["verdict"] == "machine-suspect":
+                for q in item["_members"]:
+                    if labels[q]["label"] == "human":
+                        labels[q] = dict(labels[q], label="machine", reasons=["spike_topic"])
+        for item in spikes["items"]:
+            item.pop("_members", None)
+        if "topic_spikes" in selected:
+            results["topic_spikes"] = spikes
+    elif "topic_spikes" in selected:
+        results["topic_spikes"] = {"status": "not measured", "reason": "no previous-window query rows", "count": 0, "items": []}
     rows = all_rows if opts.get("include_machine") else human_rows(all_rows, labels)
     curve = ctr_curve(rows)
-    results = {}
     if "human_basis" in selected:
-        prev_block = dataset.get("query_page_previous")
-        prev_rows = _merge_query_page(_rows(prev_block)) if prev_block is not None else None
         results["human_basis"] = human_basis(all_rows, labels, prev_rows, limit=limit)
     if "striking_distance" in selected:
         results["striking_distance"] = striking_distance(
@@ -883,6 +1053,17 @@ def print_human(result: dict) -> None:
                 c = i["clicks"]
                 tag = "seasonal" if i["seasonal"] is True else "trend" if i["seasonal"] is False else "no last-year data"
                 print(f"  {c['before_previous']:>6} -> {c['previous']:>6} -> {c['current']:>6}  [{tag}]  {i['page']}")
+    ts = result.get("topic_spikes")
+    if ts:
+        if ts.get("status") == "not measured":
+            print(f"\nTopic spikes: not measured — {ts['reason']}")
+        else:
+            print(f"\nTopic spikes ({ts['criteria']}): {ts['count']}")
+            for i in ts["items"][:10]:
+                print(f"  {i['verdict']:<15} {i['impressions']['before']:>9,} -> {i['impressions']['now']:>9,} impr  "
+                      f"{i['clicks']['before']:>4} -> {i['clicks']['now']:>4} clicks  {i['queries']:>4} q  {' / '.join(i['topic'])}")
+                for p in i["pages"][:2]:
+                    print(f"      {p['impressions']:>9,}  {p['page']}")
     hb = result.get("human_basis")
     if hb:
         cur = hb["current"]
@@ -912,7 +1093,7 @@ def print_human(result: dict) -> None:
         print(f"Note: {line}")
 
 
-ANALYSES = ("striking_distance", "low_ctr", "cannibalization", "decay", "serve_map", "human_basis")
+ANALYSES = ("striking_distance", "low_ctr", "cannibalization", "decay", "serve_map", "human_basis", "topic_spikes")
 
 
 def main() -> int:
@@ -927,6 +1108,8 @@ def main() -> int:
     parser.add_argument("--serve-map", metavar="CSV", help="CSV of query,intended_url: which page Google actually shows")
     parser.add_argument("--human-basis", action="store_true",
                         help="Blended vs human-only figures, now and vs the previous window (one more request)")
+    parser.add_argument("--topic-spikes", action="store_true",
+                        help="Topics whose impressions jumped since the previous window: real interest or machine-suspect")
     parser.add_argument("--include-machine", action="store_true",
                         help="Keep machine and agent-like queries in every analysis (default: set aside)")
     parser.add_argument("--all", action="store_true", help="Run every analysis (--serve-map still needs its CSV)")
@@ -945,7 +1128,7 @@ def main() -> int:
     if args.serve_map:
         selected.add("serve_map")
     if not selected:
-        parser.error("choose an analysis (--striking-distance, --low-ctr, --cannibalization, --decay, --serve-map, --human-basis) or --all")
+        parser.error("choose an analysis (--striking-distance, --low-ctr, --cannibalization, --decay, --serve-map, --human-basis, --topic-spikes) or --all")
     if not args.replay and not args.site_url:
         parser.error("site_url is required unless --replay is given")
     if args.days < 1 or args.max_rows < 1 or args.limit < 1:
@@ -978,7 +1161,7 @@ def main() -> int:
         service = gsc_query._build_service(gsc_query._load_credentials())
         try:
             dataset = fetch_dataset(service, args.site_url, end, args.days, history="decay" in selected,
-                                    max_rows=args.max_rows, previous_queries="human_basis" in selected)
+                                    max_rows=args.max_rows, previous_queries=bool({"human_basis", "topic_spikes"} & selected))
         except RuntimeError as exc:
             print(json.dumps({"error": str(exc)}) if args.json else f"Error: {exc}")
             return 1
