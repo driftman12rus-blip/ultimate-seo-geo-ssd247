@@ -62,6 +62,18 @@ SECURITY_HEADERS = {
 }
 
 
+def _issue(code: str, severity: str, finding: str, fix: str, evidence: str = "") -> dict:
+    """One finding in the shape generate_report.py renders: what is wrong, what shows it, what to do.
+
+    Each code is the one generate_report.py derived from this script's old one-line
+    wording, so a --previous run from before the change still matches its findings.
+    """
+    issue = {"code": code, "severity": severity, "finding": finding, "fix": fix, "confidence": "Confirmed"}
+    if evidence:
+        issue["evidence"] = evidence
+    return issue
+
+
 def check_security_headers(url: str, timeout: int = 15) -> dict:
     """
     Check security headers for a URL.
@@ -100,7 +112,10 @@ def check_security_headers(url: str, timeout: int = 15) -> dict:
             result["https"] = True
             result["score"] += 25
         else:
-            result["issues"].append("🔴 Site not using HTTPS — critical for SEO and trust")
+            result["issues"].append(_issue(
+                "site-not-using-https", "critical", "Site is not served over HTTPS",
+                "Serve every page over HTTPS and 301-redirect each HTTP URL to its HTTPS equivalent.",
+                f"Final URL after redirects: {resp.url}"))
             result["recommendations"].append("Migrate to HTTPS and set up 301 redirects from HTTP")
 
         # Check each security header
@@ -119,13 +134,21 @@ def check_security_headers(url: str, timeout: int = 15) -> dict:
                         try:
                             max_age = int(value.lower().split("max-age=")[1].split(";")[0].strip())
                             if max_age < 31536000:
-                                result["issues"].append(
-                                    f"⚠️ HSTS max-age is {max_age}s — recommend at least 31536000 (1 year)"
-                                )
+                                result["issues"].append(_issue(
+                                    "hsts-max-age-is-s", "medium", f"HSTS max-age is {max_age}s, under one year",
+                                    "Raise it: Strict-Transport-Security: max-age=31536000; includeSubDomains",
+                                    f"Strict-Transport-Security: {value}"))
                         except (ValueError, IndexError):
-                            pass
+                            result["issues"].append(_issue(
+                                "hsts-max-age-invalid", "medium", "HSTS max-age is not a number, so browsers ignore the header",
+                                "Set Strict-Transport-Security: max-age=31536000; includeSubDomains",
+                                f"Strict-Transport-Security: {value}"))
                     if "includesubdomains" not in value.lower():
-                        result["issues"].append("⚠️ HSTS missing includeSubDomains directive")
+                        result["issues"].append(_issue(
+                            "hsts-missing-includesubdomains-directive", "medium", "HSTS header has no includeSubDomains directive",
+                            "Add includeSubDomains once every subdomain serves HTTPS: "
+                            "Strict-Transport-Security: max-age=31536000; includeSubDomains",
+                            f"Strict-Transport-Security: {value}"))
             else:
                 result["headers_missing"][header_info["label"]] = header_info["description"]
                 result["recommendations"].append(
@@ -136,11 +159,17 @@ def check_security_headers(url: str, timeout: int = 15) -> dict:
         result["score"] = min(result["score"], 100)
 
         # Summary issues
-        missing_count = len(result["headers_missing"])
-        if missing_count > 3:
-            result["issues"].append(f"🔴 {missing_count} security headers missing — poor security posture")
-        elif missing_count > 0:
-            result["issues"].append(f"⚠️ {missing_count} security header(s) missing")
+        # Missing hardening headers on an HTTPS site is the middle tier of every rubric
+        # in references/ (technical-checklist.md, cite-domain-rating.md T02): the failing
+        # tier is no HTTPS, which is reported above as critical.
+        missing = [(info["label"], info["recommendation"]) for key, info in SECURITY_HEADERS.items()
+                   if info["label"] in result["headers_missing"]]
+        if missing:
+            result["issues"].append(_issue(
+                "security-headers-missing", "medium",
+                f"{len(missing)} security header(s) missing: {', '.join(label for label, _ in missing)}",
+                " ".join(rec if rec.endswith(".") else rec + "." for _, rec in missing),
+                "Absent from the response headers of " + resp.url))
 
     except requests.exceptions.RequestException as e:
         result["error"] = str(e)
@@ -186,7 +215,8 @@ def main():
     if result["issues"]:
         print(f"\nIssues:")
         for issue in result["issues"]:
-            print(f"  {issue}")
+            print(f"  [{issue['severity']}] {issue['finding']}")
+            print(f"    Fix: {issue['fix']}")
 
     if result["recommendations"]:
         print(f"\nRecommendations:")

@@ -136,6 +136,10 @@ def get_pagespeed(url: str, strategy: str = "mobile", api_key: str = None) -> di
                 distributions = metric_data.get("distributions", [])
 
                 thresholds = CWV_THRESHOLDS.get(label, {})
+                # The CrUX CLS percentile arrives multiplied by 100 (5 means 0.05);
+                # every other threshold and the lab value use the real score.
+                if label == "CLS" and isinstance(percentile, (int, float)):
+                    percentile = round(percentile / 100, 3)
                 entry = {
                     "value": percentile,
                     "unit": thresholds.get("unit", ""),

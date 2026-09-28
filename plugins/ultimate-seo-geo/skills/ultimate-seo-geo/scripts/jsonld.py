@@ -47,6 +47,14 @@ def script_blocks(html: str) -> List[str]:
     return _SCRIPT_BLOCK_RE.findall(html or "")
 
 
+def without_script_blocks(html: str) -> str:
+    """The page with every JSON-LD block removed, for scans of what the page itself shows.
+
+    Same pattern as script_blocks(), so the two always agree on what a block is.
+    """
+    return _SCRIPT_BLOCK_RE.sub(" ", html or "")
+
+
 def type_names(value) -> List[str]:
     """Return an `@type` value as a list of type strings.
 

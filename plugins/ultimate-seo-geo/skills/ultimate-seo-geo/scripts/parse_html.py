@@ -126,8 +126,12 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
         "issues": [],
     }
 
-    # Title
-    title_tags = soup.find_all("title")
+    # Title. A <title> inside inline SVG or MathML labels that graphic for screen
+    # readers; it is not the document title, and icon-heavy pages carry dozens.
+    title_tags = [
+        t for t in soup.find_all("title")
+        if t.find_parent(["svg", "math"]) is None
+    ]
     if title_tags:
         result["title"] = title_tags[0].get_text(strip=True)
     if len(title_tags) > 1:

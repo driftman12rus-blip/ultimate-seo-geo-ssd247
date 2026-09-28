@@ -281,7 +281,7 @@ def build_environment_fixes(data: dict) -> list:
     missing_headers = sec.get("headers_missing", {})
     if missing_headers:
         add(
-            "critical" if len(missing_headers) >= 4 else "warning",
+            "warning",  # HTTPS with headers missing is a middle tier; no HTTPS is the failing one
             f"{len(missing_headers)} security headers missing",
             "Missing headers reduce trust and can expose the site to browser/security risks.",
             _platform_hint(platform, "headers"),
@@ -1634,6 +1634,8 @@ def _summary_finding(issue: dict) -> dict:
     return {
         "id": issue["id"],
         "severity": issue["canonical_severity"],
+        # What the script said when a display-only check's severity was capped, else None.
+        "severity_capped_from": issue.get("severity_capped_from"),
         "level": issue["severity"],
         "section": issue["section"],
         "group": CHECK_GROUP.get(issue["section"]),
@@ -2047,6 +2049,28 @@ def render_all_recommendations(data: dict) -> str:
     return html
 
 
+def psi_metric_text(psi: dict, name: str) -> str:
+    """One Core Web Vital from pagespeed.py's "metrics" as "2,340 ms (good, field)", else "—".
+
+    pagespeed.py writes {"LCP": {"value", "unit", "rating", "source"}, ...}: field data
+    (CrUX) when Google has it, Lighthouse lab data otherwise. The panel used to read
+    "field_data"/"lab_data", keys the script never wrote, so every value showed "—".
+    """
+    entry = (psi.get("metrics") or {}).get(name)
+    if not isinstance(entry, dict) or entry.get("value") is None:
+        return "—"
+    value = entry["value"]
+    shown = f"{value:,}" if isinstance(value, int) else str(value)
+    unit = f" {entry['unit']}" if entry.get("unit") else ""
+    notes = ", ".join(x for x in (str(entry.get("rating") or "").replace("_", " "), entry.get("source") or "") if x)
+    return f"{shown}{unit}" + (f" ({notes})" if notes else "")
+
+
+# A display-only check is shown, never weighted, so it must not decide a CI gate either:
+# "high" is the report's critical level and would trip --fail-on critical on its own.
+DISPLAY_ONLY_MAX_SEVERITY = "medium"
+
+
 def _collect_issues(data: dict) -> list:
     issues = []
     for section_name, section_data in data["sections"].items():
@@ -2055,6 +2079,10 @@ def _collect_issues(data: dict) -> list:
         for issue in section_data.get("issues", []) or []:
             if isinstance(issue, dict):
                 canonical = _canonical_severity(issue.get("severity"))
+                capped_from = None
+                if (section_name in DISPLAY_ONLY_CHECKS
+                        and SEVERITY_SCALE.index(canonical) < SEVERITY_SCALE.index(DISPLAY_ONLY_MAX_SEVERITY)):
+                    capped_from, canonical = canonical, DISPLAY_ONLY_MAX_SEVERITY
                 finding = _plain(issue.get("finding", "")) or _plain(str(issue))
                 fix = str(issue.get("fix", "") or "")
                 issues.append({
@@ -2065,6 +2093,7 @@ def _collect_issues(data: dict) -> list:
                     "canonical_severity": canonical,
                     "section": section_name,
                     "source_issue": issue,
+                    **({"severity_capped_from": capped_from} if capped_from else {}),
                     **_recommendation_metadata(issue, section_name),
                 })
             elif isinstance(issue, str):
@@ -2376,7 +2405,6 @@ def _check_panels(data: dict) -> dict:
     )
 
     psi = get("pagespeed")
-    metrics = psi.get("field_data") or psi.get("lab_data") or {}
     psi_note = ""
     if psi.get("error") or not psi.get("performance_score"):
         detail = f" ({_esc(psi.get('error'))})" if psi.get("error") else ""
@@ -2389,9 +2417,9 @@ def _check_panels(data: dict) -> dict:
     panels["pagespeed"] = (
         psi_note
         + _kv([("Performance", _esc(psi.get("performance_score") or "—")),
-               ("LCP", _esc(metrics.get("LCP", "—"))),
-               ("INP or TBT", _esc(metrics.get("INP", metrics.get("TBT", "—")))),
-               ("CLS", _esc(metrics.get("CLS", "—")))])
+               ("LCP", _esc(psi_metric_text(psi, "LCP"))),
+               ("INP", _esc(psi_metric_text(psi, "INP"))),
+               ("CLS", _esc(psi_metric_text(psi, "CLS")))])
         + render_recommendations(psi)
     )
 
@@ -4038,9 +4066,9 @@ def export_xlsx(data: dict, scores: dict, output_path: str) -> str:
         row += 1
     psi = data["sections"].get("pagespeed", {})
     if psi and not psi.get("error"):
-        for metric in ["LCP", "INP", "CLS", "TBT", "FCP", "SI"]:
-            val = psi.get("field_data", psi.get("lab_data", {})).get(metric)
-            if val is not None:
+        for metric in ["LCP", "INP", "CLS", "FCP", "TTFB"]:
+            val = psi_metric_text(psi, metric)
+            if val != "—":
                 ws4.cell(row=row, column=1, value=f"CWV: {metric}").border = thin_border
                 ws4.cell(row=row, column=2, value="Measured").border = thin_border
                 ws4.cell(row=row, column=3, value=str(val)).border = thin_border

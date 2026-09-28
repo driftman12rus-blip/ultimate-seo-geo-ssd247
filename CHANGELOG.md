@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.21.1] - 2026-09-28
+
+The report stops raising false Critical and High findings that a live run on posthog.com and
+smashingmagazine.com exposed, and every finding a person must act on now says what to do.
+Patch per D-020.
+
+### Fixed
+- **Every page with labelled SVG icons got a Critical "Multiple `<title>` tags".** `parse_html.py`
+  counted the `<title>` inside inline SVG (and MathML), which names the icon for screen readers.
+  Both sites have one document title and were flagged. Only titles outside `<svg>`/`<math>` count
+  now, and an icon's label is never read as the page title.
+- **A SaaS company was told (High) to add LocalBusiness schema.** `local_signals_checker.py` read
+  its address and map signals from the whole HTML, JSON-LD included, so posthog.com's
+  `Organization.address` (its head office) counted as a local business. Address and map signals
+  are now read outside JSON-LD (`jsonld.without_script_blocks()`, the same pattern as
+  `script_blocks()`); a LocalBusiness block and a visible address with a phone link still count.
+- **A display-only check could fail a CI gate.** `navigation_checker.py` emits High, which is the
+  report's critical level, although navigation carries no score. Findings from `page_types`,
+  `navigation`, `architecture` and `search_performance` are now capped at medium in the report
+  and summary JSON; the new `severity_capped_from` field keeps what the script said.
+- **The PageSpeed panel showed "—" for LCP, INP and CLS even when measured.** It read
+  `field_data` / `lab_data`, keys `pagespeed.py` never writes; it reads `metrics` now, in the HTML
+  and the XLSX ("2,340 ms (fast, field)"). The CrUX CLS percentile, which the API sends ×100, is
+  divided by 100 (it printed "5 (target: <0.1)").
+- **Findings with no fix and no evidence.** `security_headers.py`, `broken_links.py` and
+  `internal_links.py` raised bare strings, which reach the report with neither: a Critical
+  "5 security headers missing" named none of them. All three emit structured findings with the
+  affected URLs or headers and a fix. Missing hardening headers on an HTTPS site are medium (the
+  middle tier of `references/technical-checklist.md`); no HTTPS stays critical. A page with no
+  links in its HTML is an open question pointing at `--render always`, not a defect. An
+  unreadable HSTS `max-age` is reported instead of silently skipped. Finding codes are those
+  earlier runs recorded, so `--previous` still matches, and these three checks score as before.
+  The overall score moves only where local signals no longer apply (a non-local site's local
+  check is now left out, as it always was for sites with no address at all).
+
 ## [1.21.0] - 2026-09-27
 
 Search data and the site's crawl now say what to fix. It covers Search Console, GA4 and the

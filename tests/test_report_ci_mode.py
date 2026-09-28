@@ -93,7 +93,7 @@ def test_summary_contract():
     assert summary["categories"]["security"]["status"] == "Strong"
     assert summary["counts"] == {"critical": 1, "high": 0, "medium": 1, "low": 0, "info": 0}
     assert summary["findings"][0] == {
-        "id": "F01", "severity": "critical", "level": "critical", "section": "security", "group": "technical",
+        "id": "F01", "severity": "critical", "severity_capped_from": None, "level": "critical", "section": "security", "group": "technical",
         "finding": "Strict-Transport-Security header missing", "evidence": None, "impact": None, "fix": "",
         "confidence": None, "falsifiability": None, "leading_indicator": None, "dependency": None,
         "source": "script:security", "tags": [],

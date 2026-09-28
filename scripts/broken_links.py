@@ -122,10 +122,55 @@ def _refused_issue(refused: list) -> dict:
     }
 
 
+def _examples(links: list, describe) -> str:
+    shown = "; ".join(describe(link) for link in links[:5])
+    return shown + (f"; and {len(links) - 5} more" if len(links) > 5 else "")
+
+
+def _soft_404_issue(links: list, finding: str) -> dict:
+    return {
+        "severity": "medium",
+        "finding": finding,
+        "evidence": _examples(links, lambda l: f"{l['url']} -> HTTP {l.get('status')}"),
+        "fix": "Make each missing page answer 404 or 410, or 301 it to the closest live page; "
+               "then point the links at the live URL.",
+        "confidence": "Likely",
+        "falsifiability": "Wrong if the page has real content that merely mentions 'not found'.",
+    }
+
+
+def _timeout_issue(links: list, finding: str) -> dict:
+    return {
+        "severity": "medium",
+        "finding": finding,
+        "evidence": _examples(links, lambda l: f"{l['url']} ({l.get('error') or 'no response'})"),
+        "fix": "Open each in a browser. If it is slow for people too, fix the server response time; "
+               "if it loads, re-run with a longer --timeout before acting.",
+        "confidence": "Hypothesis",
+    }
+
+
+def _chain_issue(links: list, finding: str) -> dict:
+    def describe(link):
+        r = link.get("redirect") or {}
+        codes = ", ".join(str(c) for c in r.get("codes") or [])
+        return f"{link['url']} -> {r.get('to', '?')} ({r.get('hops', '?')} hops: {codes})"
+    return {
+        "severity": "medium",
+        "lane": "Auto",
+        "finding": finding,
+        "evidence": _examples(links, describe),
+        "fix": "Change each link to point straight at its final URL, and collapse the server "
+               "redirects so any old URL takes one hop.",
+        "confidence": "Confirmed",
+    }
+
+
 def _issue_text(issue) -> str:
     if not isinstance(issue, dict):
         return issue
-    return f"{'🔴' if issue.get('severity') == 'critical' else 'ℹ️'} {issue['finding']}"
+    icon = {"critical": "🔴", "medium": "⚠️"}.get(issue.get("severity"), "ℹ️")
+    return f"{icon} {issue['finding']}"
 
 
 def check_link(link: dict, timeout: int = 10, detect_soft_404: bool = True) -> dict:
@@ -234,7 +279,17 @@ def check_broken_links(url: str, internal_only: bool = False,
     result["total_links"] = len(links)
 
     if not links:
-        result["issues"].append("⚠️ No links found on page")
+        # Usually a JavaScript-rendered page: the raw HTML holds no anchors to check.
+        result["issues"].append({
+            "code": "no-links-found-on-page",
+            "severity": "info",
+            "kind": "data_gap",
+            "finding": "No links found in the page's HTML, so no links were checked",
+            "evidence": f"0 {'internal ' if internal_only else ''}<a href> links in the response from {url}",
+            "fix": "If the page shows links in a browser, they are added by JavaScript: "
+                   "re-run generate_report.py with --render always to check them.",
+            "confidence": "Confirmed",
+        })
         return result
 
     checked = []
@@ -279,19 +334,15 @@ def check_broken_links(url: str, internal_only: bool = False,
     if result["refused"]:
         result["issues"].append(_refused_issue(result["refused"]))
     if result["soft_404s"]:
-        result["issues"].append(
-            f"⚠️ {len(result['soft_404s'])} soft 404(s) found (page returns 200 but shows 'not found')"
-        )
+        result["issues"].append(_soft_404_issue(
+            result["soft_404s"],
+            f"{len(result['soft_404s'])} soft 404(s) found (page returns 200 but shows 'not found')"))
     if result["timeout"]:
-        result["issues"].append(
-            f"⚠️ {len(result['timeout'])} link(s) timed out"
-        )
+        result["issues"].append(_timeout_issue(result["timeout"], f"{len(result['timeout'])} link(s) timed out"))
     if result["redirected"]:
         chains = [l for l in result["redirected"] if is_redirect_chain(l)]
         if chains:
-            result["issues"].append(
-                f"⚠️ {len(chains)} redirect chain(s) detected (>1 hop)"
-            )
+            result["issues"].append(_chain_issue(chains, f"{len(chains)} redirect chain(s) detected (>1 hop)"))
 
     return result
 
@@ -424,17 +475,12 @@ def crawl_broken_links(start_url: str, max_depth: int = 2, max_pages: int = 50,
     if all_refused:
         result["issues"].append(_refused_issue(all_refused))
     if all_soft_404s:
-        result["issues"].append(
-            f"⚠️ {len(all_soft_404s)} soft 404(s) — pages return 200 but show 'not found' content"
-        )
+        result["issues"].append(_soft_404_issue(
+            all_soft_404s, f"{len(all_soft_404s)} soft 404(s) — pages return 200 but show 'not found' content"))
     if all_chains:
-        result["issues"].append(
-            f"⚠️ {len(all_chains)} redirect chain(s) with >1 hop"
-        )
+        result["issues"].append(_chain_issue(all_chains, f"{len(all_chains)} redirect chain(s) with >1 hop"))
     if all_timeouts:
-        result["issues"].append(
-            f"⚠️ {len(all_timeouts)} link(s) timed out"
-        )
+        result["issues"].append(_timeout_issue(all_timeouts, f"{len(all_timeouts)} link(s) timed out"))
 
     return result
 

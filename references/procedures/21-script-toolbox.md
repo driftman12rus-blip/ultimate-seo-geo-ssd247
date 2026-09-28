@@ -115,7 +115,8 @@ python scripts/generate_report.py https://staging.example.com --format none --js
     | Field | Meaning |
     |---|---|
     | `id` | `F01`, `F02`, … in severity order; matches the HTML report |
-    | `severity` | On `severity_scale`. A script's older `warning` is read as `medium` |
+    | `severity` | On `severity_scale`. A script's older `warning` is read as `medium`. A display-only check (`page_types`, `navigation`, `architecture`, `search_performance`) is capped at `medium`, so an unweighted check never reaches the `critical` level a CI gate acts on |
+    | `severity_capped_from` | The script's own severity when that cap lowered it (`critical` or `high`), else `null` |
     | `level` | `critical` / `warning` / `info`: the bucket `--fail-on`, annotations and the HTML use. `high` → `critical`, `medium` → `warning`, `low` → `info` |
     | `section`, `group` | The check that raised it, and its report category |
     | `finding`, `fix` | What is wrong and what to do (`fix` may be empty) |

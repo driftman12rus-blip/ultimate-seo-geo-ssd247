@@ -103,6 +103,21 @@ def extract_internal_links(html: str, page_url: str, domain: str) -> list:
     return links
 
 
+def _issue(severity: str, finding: str, fix: str, evidence: str, confidence: str = "Confirmed") -> dict:
+    """A finding generate_report.py renders with its evidence and fix.
+
+    The wording stays what this script printed as a bare string before, so the
+    finding code generate_report.py derives from it, and --previous matching, do not change.
+    """
+    return {"severity": severity, "finding": finding, "evidence": evidence, "fix": fix, "confidence": confidence}
+
+
+def _linked_from(pages: list) -> str:
+    shown = "; ".join(f"{p['url']} (HTTP {p.get('status', '?')}, linked from {len(p.get('linked_from') or [])} page(s))"
+                      for p in pages[:5])
+    return shown + (f"; and {len(pages) - 5} more" if len(pages) > 5 else "")
+
+
 def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
                max_workers: int = 5, timeout: int = 10) -> dict:
     """
@@ -304,16 +319,18 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
     if result["broken_internal_pages"]:
         bp = result["broken_internal_pages"]
         urls_preview = ", ".join(p["url"] for p in bp[:3])
-        result["issues"].append(
-            f"🔴 {len(bp)} internal page(s) return 404/4xx: {urls_preview}"
-        )
+        result["issues"].append(_issue(
+            "critical", f"{len(bp)} internal page(s) return 404/4xx: {urls_preview}",
+            "301-redirect each moved page to its new URL, restore pages deleted by mistake, "
+            "and change the links that point at them.", _linked_from(bp)))
 
     if result["server_error_pages"]:
         sp = result["server_error_pages"]
         urls_preview = ", ".join(p["url"] for p in sp[:3])
-        result["issues"].append(
-            f"🔴 {len(sp)} internal page(s) return 5xx server errors: {urls_preview}"
-        )
+        result["issues"].append(_issue(
+            "critical", f"{len(sp)} internal page(s) return 5xx server errors: {urls_preview}",
+            "Check the server logs for these URLs and fix the error; re-run to confirm it was not a transient outage.",
+            _linked_from(sp)))
 
     if result["refused_pages"]:
         # Not a page-list summary the score charges per page: an open question.
@@ -333,41 +350,55 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
     if result["soft_404_pages"]:
         sf = result["soft_404_pages"]
         urls_preview = ", ".join(p["url"] for p in sf[:3])
-        result["issues"].append(
-            f"⚠️ {len(sf)} internal page(s) are soft 404s (return 200 but show "
-            f"'not found' content): {urls_preview}"
-        )
+        result["issues"].append(_issue(
+            "medium", f"{len(sf)} internal page(s) are soft 404s (return 200 but show "
+            f"'not found' content): {urls_preview}",
+            "Return 404 or 410 for pages that no longer exist, or 301 them to the closest live page.",
+            _linked_from(sf), "Likely"))
 
     if result["redirected_pages"]:
         rp = result["redirected_pages"]
         urls_preview = ", ".join(f"{p['url']} → {p['final_url']}" for p in rp[:2])
-        result["issues"].append(
-            f"⚠️ {len(rp)} internal link(s) point to redirect URLs: {urls_preview}"
-        )
+        result["issues"].append(_issue(
+            "medium", f"{len(rp)} internal link(s) point to redirect URLs: {urls_preview}",
+            "Change each link to the final URL so it resolves in one request.",
+            "; ".join(f"{p['url']} -> {p['final_url']}" for p in rp[:5])
+            + (f"; and {len(rp) - 5} more" if len(rp) > 5 else "")))
 
     low_link_pages = [url for url, count in page_link_counts.items() if count < 3]
     if low_link_pages:
-        result["issues"].append(
-            f"⚠️ {len(low_link_pages)} page(s) have fewer than 3 internal links"
-        )
+        result["issues"].append(_issue(
+            "medium", f"{len(low_link_pages)} page(s) have fewer than 3 internal links",
+            "Link each of these pages to related pages in the body copy, where readers look for the next step.",
+            "; ".join(f"{u} ({page_link_counts[u]})" for u in low_link_pages[:5])
+            + (f"; and {len(low_link_pages) - 5} more" if len(low_link_pages) > 5 else "")))
 
     high_link_pages = [url for url, count in page_link_counts.items() if count > 100]
     if high_link_pages:
-        result["issues"].append(
-            f"⚠️ {len(high_link_pages)} page(s) have >100 internal links — may dilute link equity"
-        )
+        result["issues"].append(_issue(
+            "medium", f"{len(high_link_pages)} page(s) have >100 internal links — may dilute link equity",
+            "Trim repeated navigation and footer link blocks on these pages, and keep in-content links "
+            "to the pages that matter most.",
+            "; ".join(f"{u} ({page_link_counts[u]} links)" for u in high_link_pages[:5])
+            + (f"; and {len(high_link_pages) - 5} more" if len(high_link_pages) > 5 else ""), "Likely"))
 
     if result["nofollow_links"]:
-        result["issues"].append(
-            f"⚠️ {len(result['nofollow_links'])} internal link(s) have nofollow — "
-            f"this wastes link equity"
-        )
+        nf = result["nofollow_links"]
+        result["issues"].append(_issue(
+            "medium", f"{len(nf)} internal link(s) have nofollow — this wastes link equity",
+            "Remove rel=\"nofollow\" from links to your own pages; keep crawlers out of a page "
+            "with robots.txt or noindex instead.",
+            "; ".join(f"{l['source']} -> {l['url']}" for l in nf[:5])
+            + (f"; and {len(nf) - 5} more" if len(nf) > 5 else "")))
 
-    no_text_links = sum(1 for l in all_links if l["anchor_text"] == "[no text]")
-    if no_text_links:
-        result["issues"].append(
-            f"⚠️ {no_text_links} link(s) have no anchor text"
-        )
+    no_text = [l for l in all_links if l["anchor_text"] == "[no text]"]
+    if no_text:
+        result["issues"].append(_issue(
+            "medium", f"{len(no_text)} link(s) have no anchor text",
+            "Give each link visible text that names its target; for an icon or image link, "
+            "add an aria-label or the image's alt text.",
+            "; ".join(f"{l['source']} -> {l['url']}" for l in no_text[:5])
+            + (f"; and {len(no_text) - 5} more" if len(no_text) > 5 else "")))
 
     # Recommendations
     if result["broken_internal_pages"]:
@@ -645,7 +676,8 @@ def main():
     if result["issues"]:
         print(f"\nIssues:")
         for issue in result["issues"]:
-            print(f"  {'ℹ️ ' + issue['finding'] if isinstance(issue, dict) else issue}")
+            icon = {"critical": "🔴", "medium": "⚠️"}.get(issue.get("severity"), "ℹ️")
+            print(f"  {icon} {issue['finding']}")
 
     if result["recommendations"]:
         print(f"\nRecommendations:")

@@ -53,14 +53,19 @@ def check_local_signals(url: str) -> dict:
     website = jsonld.declares_type(html, "WebSite")
     tel = len(re.findall(r'href=["\']tel:', html, re.I))
     mail = len(re.findall(r'href=["\']mailto:', html, re.I))
+    # Address and map signals are read from the page outside JSON-LD. A LocalBusiness
+    # block is already counted above; any other block's address (a SaaS company's
+    # Organization.address, a publisher's HQ) says where the company is registered,
+    # not that it serves customers at a location.
+    page = jsonld.without_script_blocks(html)
     street = bool(
         re.search(
             r'\b(streetAddress|postalCode|addressLocality|Address")\b',
-            html,
+            page,
             re.I,
         )
     )
-    maps = "google.com/maps" in html.lower() or "maps.app.goo.gl" in html.lower()
+    maps = "google.com/maps" in page.lower() or "maps.app.goo.gl" in page.lower()
 
     has_local_indicators = bool(tel or street or maps)
     likely_local = has_local_indicators or lb

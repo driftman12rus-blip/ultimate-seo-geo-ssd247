@@ -2,8 +2,8 @@
 
 | Attribute | Details |
 | --- | --- |
-| **Version** | 1.21.0 |
-| **Updated** | 2026-09-21 |
+| **Version** | 1.21.1 |
+| **Updated** | 2026-09-28 |
 | **License** | MIT |
 | **Author** | Myk Pono |
 | **Homepage** | [lab.mykpono.com](https://lab.mykpono.com) |
