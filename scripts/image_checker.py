@@ -96,6 +96,93 @@ def lcp_candidate(imgs: list):
     return None
 
 
+_OBJECT_FIT_COVER = re.compile(r"(?:^|[;{\s])object-fit\s*:\s*cover\b", re.I)
+_CSS_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+# Innermost `selectors { declarations }` blocks, so rules nested in @media are read too.
+_CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
+# The subject (last compound) of a selector: optional tag, then #id / .class parts only.
+_SIMPLE_COMPOUND = re.compile(r"^([a-z][a-z0-9-]*|\*)?((?:[.#][\w-]+)*)$", re.I)
+_BACKGROUND_CLASS = re.compile(r"poster|backdrop|background|(?:^|[-_])bg(?:$|[-_])", re.I)
+
+
+def _compound_matches(compound: str, img) -> bool:
+    """Does a simple compound selector (img.a.b, .a, #id, img) select this <img>?"""
+    m = _SIMPLE_COMPOUND.match(compound)
+    if not m or not (m.group(1) or m.group(2)):
+        return False
+    tag, parts = (m.group(1) or "").lower(), m.group(2)
+    if tag not in ("", "*", "img"):
+        return False
+    if not parts:
+        return tag == "img"   # bare `img { object-fit: cover }`
+    classes = set(str(_attr(img, "class") or "").split())
+    for part in re.findall(r"[.#][\w-]+", parts):
+        if part[0] == "." and part[1:] not in classes:
+            return False
+        if part[0] == "#" and part[1:] != (_attr(img, "id") or ""):
+            return False
+    return True
+
+
+def _stylesheet_sets_cover(soup, img) -> bool:
+    """A same-page <style> rule sets object-fit: cover on a selector matching the <img>.
+
+    Only the selector's last compound is matched (ancestor parts are ignored);
+    selectors with pseudo-classes or attribute parts are skipped.
+    """
+    for style in soup.find_all("style"):
+        css = _CSS_COMMENT.sub("", style.get_text() or "")
+        for selectors, decls in _CSS_RULE.findall(css):
+            if not _OBJECT_FIT_COVER.search(";" + decls):
+                continue
+            for sel in selectors.split(","):
+                sel = sel.strip()
+                if not sel or sel.startswith("@") or any(c in sel for c in ":[]"):
+                    continue
+                last = re.split(r"\s*[>+~]\s*|\s+", sel)[-1]
+                if _compound_matches(last, img):
+                    return True
+    return False
+
+
+def _looks_like_background_poster(img) -> bool:
+    """Heuristic when no CSS says so: a decorative image (alt="", aria-hidden,
+    role=presentation) placed like a background, i.e. inside an aria-hidden
+    ancestor, or carrying a background-style class (poster, backdrop,
+    background, bg) on itself or its parent, or an inline width:100%;height:100%."""
+    if not is_decorative(img):
+        return False
+    for parent in img.parents:
+        if parent.name in (None, "[document]"):
+            break
+        if (_attr(parent, "aria-hidden") or "").strip().lower() == "true":
+            return True
+    for tag in (img, img.parent):
+        if tag is not None and any(_BACKGROUND_CLASS.search(c) for c in str(_attr(tag, "class") or "").split()):
+            return True
+    style = str(_attr(img, "style") or "").replace(" ", "").lower()
+    return "width:100%" in style and "height:100%" in style
+
+
+def cover_fit(soup, img) -> str | None:
+    """How the LCP image was found to be object-fit: cover, or None.
+
+    "inline-style": its style attribute says so. "css": a rule in a same-page
+    <style> block matches it. "heuristic": neither, but it is a decorative image
+    placed like a background (_looks_like_background_poster).
+    Not seen: external stylesheets (never fetched), styles applied by script
+    after load, and rendered layout. The box size is never measured, so a cover
+    image in a box wider than itself (where srcset would help) is not told apart.
+    """
+    if _OBJECT_FIT_COVER.search(";" + str(_attr(img, "style") or "")):
+        return "inline-style"
+    if _stylesheet_sets_cover(soup, img):
+        return "css"
+    if _looks_like_background_poster(img):
+        return "heuristic"
+    return None
+
+
 def hero_preload(soup):
     """A <link rel="preload" as="image" fetchpriority="high">, or None.
 
@@ -149,6 +236,7 @@ def analyze_html(html: str, base_url: str) -> dict:
     # balloonbay.us the first <img> in the document is a 52px header logo with
     # alt="" aria-hidden="true"; the hero comes after it.
     lcp_issues = []
+    lcp_srcset = None   # None: no LCP candidate
     candidate = lcp_candidate(imgs)
     if candidate is not None:
         first_img = candidate
@@ -157,6 +245,7 @@ def analyze_html(html: str, base_url: str) -> dict:
         has_srcset = bool(_attr(first_img, "srcset"))
         evidence = f"LCP candidate: <img src=\"{_attr(first_img, 'src') or ''}\">"
         preload = hero_preload(soup)
+        lcp_srcset = {"assessed": True, "has_srcset": has_srcset}
 
         if loading == "lazy":
             lcp_issues.append({
@@ -172,7 +261,23 @@ def analyze_html(html: str, base_url: str) -> dict:
                 "evidence": evidence,
                 "fix": "Add fetchpriority=\"high\" to the LCP/hero image to preload it sooner.",
             })
-        if not has_srcset:
+        # A cover-fitted image is scaled to fill its box. When the box is taller
+        # relative to its width than the image (balloonbay.us's hero: a 375x946
+        # box on a phone draws the 1920x696 file 2608px wide), smaller srcset
+        # files would be blurry, so srcset is not assessed, and the report says so.
+        cover = None if has_srcset else cover_fit(soup, first_img)
+        if cover:
+            lcp_srcset = {"assessed": False, "has_srcset": False, "reason": "object-fit: cover", "detected_by": cover}
+            lcp_issues.append({
+                "severity": "info",
+                "kind": "data_gap",
+                "finding": "LCP image is object-fit: cover; srcset not assessed.",
+                "evidence": f"{evidence} (object-fit: cover, detected by {cover})",
+                "fix": "No change needed when the image fills a box taller than its own aspect ratio: it is drawn "
+                       "wider than the viewport, so smaller srcset files would look blurry. If the box is wider "
+                       "than the image, add srcset and sizes as for any hero.",
+            })
+        elif not has_srcset:
             lcp_issues.append({
                 "severity": "warning",
                 "finding": "First <img> has no srcset attribute.",
@@ -260,6 +365,7 @@ def analyze_html(html: str, base_url: str) -> dict:
         "empty_alt": decorative_ok,
         "missing_alt_pct": pct_missing_alt,
         "missing_srcset": missing_srcset,
+        "lcp_srcset": lcp_srcset,
         "missing_dimensions": missing_dimensions,
         "raster_images": len(raster_srcs),
         "score": score,

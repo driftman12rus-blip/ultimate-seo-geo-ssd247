@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.21.3] - 2026-09-29
+
+1.21.2 let the image check reach balloonbay.us's real hero, and it then asked that hero for a
+`srcset` it should not have. Patch per D-020: one behaviour fix, plus an additive output key.
+
+### Fixed
+- **A cover-fitted hero was told to add `srcset`.** `image_checker.py` raised "First <img> has no
+  srcset attribute." for balloonbay.us's hero poster, a 1920x696 `<img>` styled
+  `position:absolute; inset:0; width:100%; height:100%; object-fit:cover` in a `min-height` hero.
+  On a 375x812 phone its box is 375x946 CSS px, so `cover` draws the file 2608px wide: the 1920px
+  source is already below display resolution, and a `srcset` would make phones pick smaller,
+  blurrier files. When the LCP candidate has no `srcset` and is `object-fit: cover`, the warning is
+  replaced by an info-level data gap, "LCP image is object-fit: cover; srcset not assessed.", which
+  names how cover was detected. Detection, in order: the image's inline `style`; a rule in a
+  same-page `<style>` block (including `@media`) whose selector's last compound (`img`, `.class`,
+  `img.class`, `#id`) matches the image; otherwise a heuristic, a decorative image (`alt=""`,
+  `aria-hidden`, `role=presentation`) inside an `aria-hidden` ancestor, or with a background-style
+  class (`poster`, `backdrop`, `background`, `bg`) on itself or its parent, or an inline
+  `width:100%; height:100%`. Not seen: external stylesheets (never fetched), styles applied by
+  script, and rendered layout, so a cover image in a box wider than itself, where `srcset` would
+  help, is not told apart. The JSON gains `lcp_srcset` (`assessed`, `has_srcset`, and when not
+  assessed `reason` and `detected_by`: `inline-style`, `css` or `heuristic`). Wording and severity of
+  the normal finding are unchanged, so `--previous` still matches.
+  On balloonbay.us (live, 2026-09-29) the medium finding is gone and the info note names `css`:
+  the site inlines its stylesheet in a `<style>` block. Overall score is unchanged at 96, as the
+  missing-srcset warning never carried a deduction; findings go from 1 medium + 8 info to 9 info.
+
 ## [1.21.2] - 2026-09-29
 
 A live audit of balloonbay.us raised three medium findings the page does not have, and the
