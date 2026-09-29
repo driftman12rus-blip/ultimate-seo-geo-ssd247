@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.21.2] - 2026-09-29
+
+A live audit of balloonbay.us raised three medium findings the page does not have, and the
+sitemap check fetched every URL with TLS verification switched off. All four are fixed; on
+balloonbay.us the three false findings are gone and the overall score moves from 95 to 96.
+Patch per D-020: behaviour fixes, plus additive output keys.
+
+### Security
+- **`sitemap_checker.py` did not verify TLS certificates.** Its URL health check passed
+  `verify=False`, so a sampled URL with an expired or wrong certificate read as a healthy page,
+  and every run printed `InsecureRequestWarning`. Requests are verified now; a certificate
+  failure is named in the result (`tls_verification_failed: ...`) and raised as a High finding
+  listing the URLs, never retried unverified. Every fetch in the default path (robots.txt,
+  sitemaps, the URL sample) also follows redirects one hop at a time through
+  `url_safety.get_validated()`, so a sitemap `<loc>` that redirects into a private network is
+  refused, as `site_graph.py` and `page_network.py` already did.
+
+### Fixed
+- **Image and aria-label links were "links with no anchor text".** `internal_links.py` read only
+  a link's visible text, so client-logo links (`<a><img alt="Intuit"></a>`) and card links named by
+  `aria-label` were counted as empty (9 on balloonbay.us's homepage), although the finding's own fix
+  says aria-label or alt is the remedy. Links are now read by their accessible name: `aria-label`,
+  then `aria-labelledby` when its ids resolve, then visible text, then image `alt` and SVG
+  `<title>`, then `title`. `site_graph.py` records the same name, so the anchor audit and
+  navigation checks agree with the empty-anchor count (`site_graph.accessible_name()`).
+- **A decorative header logo was judged as the LCP image.** `image_checker.py` took the first
+  `<img>` in the document, which on balloonbay.us is a 52px logo with `alt="" aria-hidden="true"`,
+  and asked for `fetchpriority="high"` on it. The LCP candidate now skips images whose declared
+  width and height are both under 200px, and decorative images (`alt=""`, `aria-hidden`,
+  `role=presentation`) unless their declared size is large (a hero poster is often `alt=""`). A
+  `<link rel="preload" as="image" fetchpriority="high">` satisfies the fetchpriority check;
+  attribute names are read case-insensitively (React writes `fetchPriority`). LCP findings now
+  carry the candidate's `src` as evidence. Finding wording is unchanged, so `--previous` still
+  matches. On balloonbay.us the check now reaches the real hero and reports that it has no
+  `srcset` (true: `/img/hero-slide.webp` is served at 1920px to every screen).
+- **Phone numbers and dates were claims needing citations.** `content_quality.py` counted every
+  regex hit on the whole page, so the last four digits of a phone number (8 times on
+  balloonbay.us), review dates, `© 2026`, `Last updated: ...` and "since 2019" produced "1 claim(s)
+  appear to need stronger citation support". Claims are now counted per sentence in the page's own
+  content: header, nav and footer, `tel:` links, phone numbers, dates and years, copyright and
+  "last updated" lines are left out. The finding names up to three of the sentences it counted
+  in its evidence (also `claim_examples` in the JSON). The score deduction is unchanged.
+
 ## [1.21.1] - 2026-09-28
 
 The report stops raising false Critical and High findings that a live run on posthog.com and

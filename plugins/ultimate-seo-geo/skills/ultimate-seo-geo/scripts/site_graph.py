@@ -409,6 +409,50 @@ def link_region(a_tag) -> str:
     return link_region_and_container(a_tag)[0]
 
 
+def _squash(text: str | None) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def accessible_name(a_tag) -> str:
+    """The name a screen reader (and a crawler reading the link) gives a link.
+
+    aria-label, then aria-labelledby when its ids resolve in the document, then
+    the visible text, then the alt of images and the <title> of SVGs inside the
+    link, then the link's title attribute. A logo link (<a><img alt="Intuit"></a>)
+    or a card link carrying aria-label is named; reading visible text only
+    reported both as "no anchor text" (balloonbay.us, 2026-09-29).
+    """
+    label = _squash(a_tag.get("aria-label"))
+    if label:
+        return label
+    ids = a_tag.get("aria-labelledby") or ""
+    ids = ids.split() if isinstance(ids, str) else list(ids)
+    if ids:
+        root = a_tag
+        while root.parent is not None:
+            root = root.parent
+        parts = []
+        for ref in ids:
+            el = root.find(id=ref)
+            if el is not None:
+                parts.append(_squash(el.get("aria-label")) or _squash(el.get_text(" ", strip=True)))
+        label = _squash(" ".join(p for p in parts if p))
+        if label:
+            return label
+    text = _squash(a_tag.get_text(" ", strip=True))
+    if text:
+        return text
+    parts = []
+    for el in a_tag.find_all(["img", "svg"]):
+        if el.name == "img":
+            parts.append(_squash(el.get("alt")))
+        else:
+            title = el.find("title")
+            parts.append(_squash(el.get("aria-label")) or (_squash(title.get_text(" ", strip=True)) if title else ""))
+    label = _squash(" ".join(p for p in parts if p))
+    return label or _squash(a_tag.get("title"))
+
+
 def _jsonld_blocks(soup) -> list:
     blocks = []
     for script in soup.find_all("script", attrs={"type": re.compile(r"application/ld\+json", re.I)}):
@@ -538,7 +582,7 @@ def extract_page(html: str, url: str, site_host: str, base_url: str | None = Non
         out_links.append({
             "href": full,
             "key": page_key(full) if internal else None,
-            "anchor": a.get_text(" ", strip=True)[:120],
+            "anchor": accessible_name(a)[:120],
             "rel": [r.lower() for r in rel],
             "region": region,
             "container": container,

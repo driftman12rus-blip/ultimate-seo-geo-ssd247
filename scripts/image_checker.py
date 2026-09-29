@@ -41,6 +41,78 @@ def _src_extension(src: str) -> str:
     return path[dot:].lower() if dot != -1 else ""
 
 
+SMALL_IMAGE_PX = 200  # both declared dimensions under this: an icon or logo, not the LCP element
+
+
+def _attr(tag, name: str):
+    """An attribute read case-insensitively (React emits fetchPriority, imageSrcSet)."""
+    name = name.lower()
+    for key, value in (tag.attrs or {}).items():
+        if key.lower() == name:
+            return " ".join(value) if isinstance(value, list) else value
+    return None
+
+
+def _px(value) -> int | None:
+    m = re.match(r"\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*$", str(value or ""))
+    return int(float(m.group(1))) if m else None
+
+
+def is_decorative(img) -> bool:
+    """alt="", aria-hidden="true" or role=presentation/none: never the LCP image a page is about."""
+    alt = _attr(img, "alt")
+    if alt is not None and str(alt).strip() == "":
+        return True
+    if (_attr(img, "aria-hidden") or "").strip().lower() == "true":
+        return True
+    return (_attr(img, "role") or "").strip().lower() in ("presentation", "none")
+
+
+def is_small(img) -> bool:
+    """Declared width and height both under SMALL_IMAGE_PX."""
+    w, h = _px(_attr(img, "width")), _px(_attr(img, "height"))
+    return w is not None and h is not None and w < SMALL_IMAGE_PX and h < SMALL_IMAGE_PX
+
+
+def _declared_large(img) -> bool:
+    w, h = _px(_attr(img, "width")), _px(_attr(img, "height"))
+    return w is not None and h is not None and w >= SMALL_IMAGE_PX and h >= SMALL_IMAGE_PX
+
+
+def lcp_candidate(imgs: list):
+    """The first <img> likely to be the LCP element, or None.
+
+    Small images (icons, logos) never are. A decorative image (alt="",
+    aria-hidden, role=presentation) is skipped unless its declared size says
+    it is large: a hero poster is often alt="" (balloonbay.us's 1920x696
+    hero is), and LCP is decided by rendered size, not by alt text.
+    """
+    for img in imgs:
+        if is_small(img):
+            continue
+        if is_decorative(img) and not _declared_large(img):
+            continue
+        return img
+    return None
+
+
+def hero_preload(soup):
+    """A <link rel="preload" as="image" fetchpriority="high">, or None.
+
+    Such a preload already starts the hero fetch at high priority, so the
+    <img> itself needing fetchpriority is not a finding.
+    """
+    for link in soup.find_all("link"):
+        rel = _attr(link, "rel") or ""
+        if "preload" not in str(rel).lower().split():
+            continue
+        if (_attr(link, "as") or "").strip().lower() != "image":
+            continue
+        if (_attr(link, "fetchpriority") or "").strip().lower() == "high":
+            return link
+    return None
+
+
 def analyze_html(html: str, base_url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     imgs = soup.find_all("img")
@@ -72,30 +144,39 @@ def analyze_html(html: str, base_url: str) -> dict:
             "fix": "Add descriptive alt text (10–125 chars) for content images; use alt=\"\" only for decorative images.",
         })
 
-    # --- LCP image signals (first visible <img> is the likely LCP candidate) ---
+    # --- LCP image signals ---
+    # The LCP candidate skips small and decorative images (lcp_candidate). On
+    # balloonbay.us the first <img> in the document is a 52px header logo with
+    # alt="" aria-hidden="true"; the hero comes after it.
     lcp_issues = []
-    if total > 0:
-        first_img = imgs[0]
-        loading = (first_img.get("loading") or "").lower()
-        fetchpriority = (first_img.get("fetchpriority") or "").lower()
-        has_srcset = bool(first_img.get("srcset"))
+    candidate = lcp_candidate(imgs)
+    if candidate is not None:
+        first_img = candidate
+        loading = (_attr(first_img, "loading") or "").lower()
+        fetchpriority = (_attr(first_img, "fetchpriority") or "").lower()
+        has_srcset = bool(_attr(first_img, "srcset"))
+        evidence = f"LCP candidate: <img src=\"{_attr(first_img, 'src') or ''}\">"
+        preload = hero_preload(soup)
 
         if loading == "lazy":
             lcp_issues.append({
                 "severity": "critical",
                 "finding": "First <img> has loading=\"lazy\" — this delays the LCP element.",
+                "evidence": evidence,
                 "fix": "Remove loading=\"lazy\" from the first/hero image. Only lazy-load below-the-fold images.",
             })
-        if fetchpriority not in ("high",):
+        if fetchpriority not in ("high",) and preload is None:
             lcp_issues.append({
                 "severity": "warning",
                 "finding": "First <img> is missing fetchpriority=\"high\".",
+                "evidence": evidence,
                 "fix": "Add fetchpriority=\"high\" to the LCP/hero image to preload it sooner.",
             })
         if not has_srcset:
             lcp_issues.append({
                 "severity": "warning",
                 "finding": "First <img> has no srcset attribute.",
+                "evidence": evidence,
                 "fix": "Add srcset with multiple resolutions (e.g. image-480w.webp 480w, image-800w.webp 800w) for responsive delivery.",
             })
 
