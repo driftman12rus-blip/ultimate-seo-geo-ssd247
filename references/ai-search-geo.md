@@ -247,7 +247,7 @@ Wikipedia and Wikidata entities are among the highest-signal sources for AI cita
 | MistralAI-Training | Mistral | Training | Optional block |
 | Bytespider | ByteDance | Training | Optional block |
 | CCBot | Common Crawl | Open training dataset | Optional block |
-| cohere-ai | Cohere | Cohere models | Optional |
+| cohere-ai | Cohere | Training (Cohere models) | Optional block |
 
 Roles follow each vendor's own crawler documentation (checked September 2026), and `scripts/robots_checker.py` carries the same roles:
 

@@ -22,7 +22,7 @@ platform that reads `AGENTS.md`. Merges Google's official SEO guidance, 2026 GEO
 and practitioner best practices into one universal framework. Every finding comes with a
 clear fix directive — not just diagnosis.
 
-**This file is the routing shell.** Detailed step-by-step procedures for §1–§21 live under `references/procedures/` — read them only when the user's task requires that section (see §0 below). Domain knowledge tables live in `references/*.md` as before.
+**This file is the routing shell.** Detailed step-by-step procedures for §1–§26 live under `references/procedures/` — read them only when the user's task requires that section (see §0 below). Domain knowledge tables live in `references/*.md` as before.
 
 ## 0. Before You Start
 
@@ -92,7 +92,7 @@ Before routing, determine which audit context applies. This controls what output
 
 | Signal | Context | What's Allowed |
 |---|---|---|
-| User says "my site", "our site", "I own", provides GSC/GA4 access, or confirms backend access | **Internal Mode** | Full scored audit, all 27 scripts eligible, Execute mode available, /100 Health Score valid |
+| User says "my site", "our site", "I own", provides GSC/GA4 access, or confirms backend access | **Internal Mode** | Full scored audit, every script eligible, Execute mode available, /100 Health Score valid |
 | External URL the user does not own (competitor, prospect, reference site) | **Competitive Mode** | Surface crawl only (homepage + up to 20 pages), no /100 Health Score, Execute mode disabled, all output labeled **"External Observation Only"** |
 
 **When in doubt, ask:** "Is this your site, or are you analyzing a competitor?"
@@ -218,7 +218,7 @@ Run `python scripts/report_lint.py report.md --summary summary.json` when a shel
 
 ---
 
-## Procedure file index (§1–§21)
+## Procedure file index (§1–§26)
 
 | § | File |
 |---|------|

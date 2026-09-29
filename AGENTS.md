@@ -21,7 +21,7 @@ clear fix directive — not just diagnosis.
 ### Routing Index
 
 What to read, what to run, which procedure file has the detail. Full script index:
-`references/audit-script-matrix.md` (45 CLI tools). Routing shell and global guardrails:
+`references/audit-script-matrix.md`. Routing shell and global guardrails:
 `SKILL.md`.
 
 | Goal | Read | Run | Procedure |
@@ -505,7 +505,7 @@ bash scripts/run_individual_checks.sh https://example.com
 
 ### Script Reference
 
-All **45** CLI tools are indexed in `references/audit-script-matrix.md` — audit area, SKILL §,
+Every script is indexed in `references/audit-script-matrix.md` — audit area, SKILL §,
 script name, and a copy-paste CLI example per row, plus a Utilities table for supporting tools.
 That file is the single source of truth; this section deliberately does not duplicate it.
 

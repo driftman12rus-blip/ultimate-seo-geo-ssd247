@@ -4193,7 +4193,7 @@ def main():
     )
     parser.add_argument("--prepared-for", metavar="NAME", help="Shown in the report masthead")
     parser.add_argument("--prepared-by", metavar="NAME", help="Shown in the report masthead (default: the skill)")
-    parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default teal")
+    parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default blue #0057B7")
 
     args = parser.parse_args()
     if args.accent and not _ACCENT_RE.match(args.accent):

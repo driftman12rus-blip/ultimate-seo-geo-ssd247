@@ -153,7 +153,7 @@ GitHub Actions step:
 
 ### Script Quick Reference
 
-For the complete script-to-section mapping (all 24 scripts with purpose and audit section), see `references/audit-script-matrix.md`.
+For the complete script-to-section mapping (every script with its purpose and audit section), see `references/audit-script-matrix.md`.
 
 ### Targeted Usage
 

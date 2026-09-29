@@ -20,7 +20,7 @@
 | AI citation presence | If they're cited and you're not → audit GEO signals (§ 3) |
 | E-E-A-T gaps | Leverage credentials where competitors use anonymous bylines |
 | AI crawler configuration | If competitor blocks OAI-SearchBot or PerplexityBot in robots.txt → immediate GEO first-mover advantage. Run `robots_checker.py [competitor-url]`. Output labeled "External Observation Only." |
-| llms.txt presence | If competitor lacks llms.txt → your llms.txt gives AI systems clearer indexing signal. Run `llms_txt_checker.py [competitor-url]`. Output labeled "External Observation Only." |
+| llms.txt presence | Non-Google AI hygiene only; not a scored gap either way (Google Search ignores llms.txt, June 2026). Mention it only if the user targets a non-Google AI engine. Run `llms_txt_checker.py [competitor-url]`. Output labeled "External Observation Only." |
 | Topic coverage gap (sitemap) | Fetch competitor's raw sitemap XML; `<loc>` URL path patterns absent from your site → direct content calendar input. Confirm sitemap reachability via `sitemap_checker.py [competitor-url]`, then read raw `<loc>` entries. Output labeled "External Observation Only." |
 
 ### Output Format

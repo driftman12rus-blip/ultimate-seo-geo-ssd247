@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ultimate-seo-geo",
-  "description": "SEO + GEO audits for AI coding agents: health scores, technical checks, Schema.org, E-E-A-T, AI search visibility. 56 scripts; HTML/XLSX/PDF. Default reports use seed URL + capped crawls; generate_report.py --crawl-deep for broader link/canonical scans. Optional MCP (Firecrawl, DataForSEO, Ahrefs, SE Ranking). Progressive disclosure via SKILL + references/procedures/. LLM-agnostic.",
+  "description": "SEO + GEO audits for AI coding agents: health scores, technical checks, Schema.org, E-E-A-T, AI search visibility. 65 scripts; HTML/XLSX/PDF. Default reports use seed URL + capped crawls; generate_report.py --crawl-deep for broader link/canonical scans. Optional MCP (Firecrawl, DataForSEO, Ahrefs, SE Ranking). Progressive disclosure via SKILL + references/procedures/. LLM-agnostic.",
   "owner": {
     "name": "Myk Pono"
   },
@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "ultimate-seo-geo",
-      "description": "Scored SEO audits for developers/marketers using AI agents: technical health, JSON-LD, E-E-A-T, backlinks, GEO (AI Overviews, ChatGPT, Perplexity). 56 scripts; HTML/Excel/PDF. E-commerce schema, drift monitoring, topic clustering, Google API tiers, maps intelligence. Optional MCP (Firecrawl, DataForSEO). Parallel workers: agents/PARALLEL-AUDIT.md. Modes: Audit → Plan → Execute.",
+      "description": "Scored SEO audits for developers/marketers using AI agents: technical health, JSON-LD, E-E-A-T, backlinks, GEO (AI Overviews, ChatGPT, Perplexity). 65 scripts; HTML/Excel/PDF. E-commerce schema, drift monitoring, topic clustering, Google API tiers, maps intelligence. Optional MCP (Firecrawl, DataForSEO). Parallel workers: agents/PARALLEL-AUDIT.md. Modes: Audit → Plan → Execute.",
       "version": "1.21.1",
       "author": {
         "name": "Myk Pono",

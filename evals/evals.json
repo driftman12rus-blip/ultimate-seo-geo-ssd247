@@ -600,7 +600,7 @@
     {
       "id": 12,
       "prompt": "How do I get my SaaS product cited by Gemini and SearchGPT? We're already ranking well in traditional Google search but AI assistants never mention us. The product is TaskForge, a project management tool at taskforge.io.",
-      "expected_output": "Routes via GEO row (triggered by Gemini, SearchGPT). Should focus on AI citation optimization: llms.txt, structured content for AI extraction, brand signals on third-party platforms, entity optimization. Should NOT produce a full technical crawl audit since traditional rankings are fine.",
+      "expected_output": "Routes via GEO row (triggered by Gemini, SearchGPT). Should focus on AI citation optimization: structured content for AI extraction, brand signals on third-party platforms, entity optimization. Gemini is Google, and Google ignores llms.txt; mention llms.txt at most as optional non-Google AI hygiene (SearchGPT), never as a Gemini lever. Should NOT produce a full technical crawl audit since traditional rankings are fine.",
       "files": [],
       "assertions": [
         {

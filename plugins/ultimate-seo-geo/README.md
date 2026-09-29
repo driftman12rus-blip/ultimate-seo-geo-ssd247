@@ -4,7 +4,7 @@
 [![Claude Skill](https://img.shields.io/badge/Claude-Skill-blueviolet)](https://claude.ai)
 [![Version](https://img.shields.io/badge/version-1.21.1-green.svg)](../../CHANGELOG.md)
 
-> The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and **54** bundled diagnostic Python scripts.
+> The definitive SEO + GEO skill for Claude. Full site audits, AI search optimization, schema generation, E-E-A-T assessment, and bundled diagnostic Python scripts.
 
 **Author:** [Myk Pono](https://mykpono.com) · [Lab](https://lab.mykpono.com) · [GitHub](https://github.com/mykpono/ultimate-seo-geo)
 

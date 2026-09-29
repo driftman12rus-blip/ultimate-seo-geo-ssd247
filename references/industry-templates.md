@@ -8,6 +8,8 @@ Site architecture, schema priorities, and content strategy by business type.
 **Measured, not just prescribed:** `page_type_classifier.py` checks a site's URL inventory against the page types each template expects (`references/page-types.md`), and `site_architecture.py` reports the real section tree, hub pages and link-equity share — see `references/procedures/26-site-structure-content-types.md`.
 Load when § 2 business type detection identifies a specific industry.
 
+**FAQPage below:** Google retired FAQ rich results for all sites on May 7, 2026. Recommend FAQ content for citability, not for a Google rich result — see the FAQPage decision tree in `references/schema-types.md`.
+
 ---
 
 
