@@ -78,7 +78,7 @@ def test_ordinary_https_url_is_not_rejected_by_the_guard(monkeypatch):
         seen["url"] = req.full_url
         return FakeResponse()
 
-    monkeypatch.setattr(link_profile.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(link_profile, "_open", fake_urlopen)
 
     final_url, body = link_profile.fetch_page("https://example.com/")
 

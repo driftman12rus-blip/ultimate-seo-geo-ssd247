@@ -53,7 +53,7 @@ except ImportError:
     sys.exit(1)
 
 import jsonld
-from url_safety import is_crawlable_href, validate_url
+from url_safety import MAX_REDIRECTS, get_validated, is_crawlable_href
 
 GRAPH_SCHEMA_VERSION = 2
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-SiteGraph/1.15; +https://github.com/mykpono/ultimate-seo-geo)"
@@ -165,9 +165,6 @@ def url_parts(url: str) -> dict:
 # Fetching
 # ---------------------------------------------------------------------------
 
-MAX_REDIRECTS = 10
-
-
 def fetch_url(url: str, timeout: int = 10, plain_text: bool = False) -> dict:
     """Fetch one URL. Returns {status, final_url, html, headers, error}.
 
@@ -181,21 +178,11 @@ def fetch_url(url: str, timeout: int = 10, plain_text: bool = False) -> dict:
     which is how robots.txt is served.
     """
     result = {"status": None, "final_url": url, "html": "", "headers": {}, "error": None}
-    current = url
     try:
-        for hop in range(MAX_REDIRECTS + 1):
-            safe = validate_url(current)
-            if not safe.ok:
-                where = "" if hop == 0 else f" (redirect {hop} to {current[:120]})"
-                result["error"] = f"URL safety check failed: {safe.reason}{where}"
-                return result
-            resp = requests.get(safe.normalized_url, headers=HEADERS, timeout=timeout, allow_redirects=False)
-            location = resp.headers.get("Location")
-            if not (resp.is_redirect and location):
-                break
-            current = urljoin(resp.url, location)
-        else:
-            result["error"] = f"too many redirects (over {MAX_REDIRECTS})"
+        resp, error = get_validated(
+            lambda u: requests.get(u, headers=HEADERS, timeout=timeout, allow_redirects=False), url)
+        if error:
+            result["error"] = error
             return result
         result["status"] = resp.status_code
         result["final_url"] = resp.url

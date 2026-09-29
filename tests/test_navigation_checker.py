@@ -22,6 +22,7 @@ from bs4 import BeautifulSoup  # noqa: E402
 
 import navigation_checker as nav  # noqa: E402
 import site_graph  # noqa: E402
+import url_safety  # noqa: E402
 
 S = "https://ex.com"
 
@@ -83,7 +84,7 @@ def test_fetch_defaults_to_utf8_when_no_charset(monkeypatch):
             return self.content.decode(self.encoding, errors="replace")
 
     monkeypatch.setattr(site_graph.requests, "get", lambda *a, **k: Resp())
-    monkeypatch.setattr(site_graph, "validate_url", lambda u: type("R", (), {"ok": True, "normalized_url": u})())
+    monkeypatch.setattr(url_safety, "validate_url", lambda u: type("R", (), {"ok": True, "normalized_url": u})())
     assert site_graph.fetch_url(S + "/")["html"] == "agent setup ↗"
 
 

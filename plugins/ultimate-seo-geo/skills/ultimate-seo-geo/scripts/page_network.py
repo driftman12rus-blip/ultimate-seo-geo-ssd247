@@ -40,7 +40,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from render_page import render_url, strip_query  # noqa: E402
-from url_safety import validate_url  # noqa: E402
+from url_safety import get_validated, validate_url  # noqa: E402
 
 PROBE_ORIGIN = "https://cors-probe.invalid"
 MAX_PROBES = 20
@@ -249,6 +249,22 @@ def probe_endpoint(url: str, timeout: int = 10) -> dict:
     return classify_endpoint(url, get, pre)
 
 
+def fetch_llms_txt(url: str, timeout: int = 15) -> dict:
+    """GET a site's llms.txt: {"url", "status", "text"} or {"url", "error"}.
+
+    Redirects are followed one validated hop at a time: the file is on a site the
+    user named, but where it redirects is that site's choice, not the user's.
+    """
+    import requests
+    try:
+        r, error = get_validated(lambda u: requests.get(u, timeout=timeout, allow_redirects=False), url)
+    except requests.RequestException as exc:
+        return {"url": url, "error": f"{type(exc).__name__}: {exc}"}
+    if error:
+        return {"url": url, "error": error}
+    return {"url": url, "status": r.status_code, "text": r.text if r.ok else ""}
+
+
 def classify_endpoint(url: str, get: dict, pre: dict) -> dict:
     html = "text/html" in (get.get("content_type") or "")
     auth = (get.get("status") == 401 or get.get("www_authenticate")
@@ -364,19 +380,11 @@ def main(argv=None) -> int:
     llms = None
     if args.llms_txt and args.urls:
         root = urljoin(args.urls[0], "/llms.txt")
-        llms = {"url": root}
-        safe = validate_url(root)
-        if not safe.ok:
-            llms["error"] = f"URL safety check failed: {safe.reason}"
-        else:
-            import requests
-            try:
-                r = requests.get(root, timeout=15)
-                llms["status"] = r.status_code
-                eps = llms_endpoints(r.text if r.ok else "", site_of(urlsplit(root).hostname or ""))
-                llms["endpoints"] = [probe_endpoint(u) if not args.no_probe else {"url": u} for u in eps[:MAX_PROBES]]
-            except requests.RequestException as exc:
-                llms["error"] = f"{type(exc).__name__}: {exc}"
+        fetched = fetch_llms_txt(root)
+        llms = {k: v for k, v in fetched.items() if k != "text"}
+        if not fetched.get("error"):
+            eps = llms_endpoints(fetched["text"], site_of(urlsplit(root).hostname or ""))
+            llms["endpoints"] = [probe_endpoint(u) if not args.no_probe else {"url": u} for u in eps[:MAX_PROBES]]
     if args.endpoint:
         llms = llms or {}
         llms["given"] = [dict(probe_endpoint(u), source="given with --endpoint") for u in args.endpoint[:MAX_PROBES]]

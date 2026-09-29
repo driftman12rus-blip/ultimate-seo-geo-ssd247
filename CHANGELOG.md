@@ -11,10 +11,13 @@ Patch per D-020.
 - **`site_graph.py` followed redirects into private networks.** `fetch_url` validated the first
   URL, then let requests follow redirects unchecked, so a public page, sitemap `<loc>` or crawled
   link that redirected to `169.254.169.254` (cloud metadata), loopback or an RFC 1918 host was
-  fetched, and its title, H1 and links went into `site_graph.json` and the report. It now follows
-  redirects itself, one hop at a time, validating each with `url_safety.validate_url` (at most
-  10), as `fetch_page.py` and `crawl_adapter.py` already did. Checked live: an httpbin redirect to
-  the metadata address is refused before any request is sent.
+  fetched, and its title, H1 and links went into `site_graph.json` and the report. The same
+  validate-then-follow gap was in `page_network.py --llms-txt` (`requests.get` follows by default)
+  and `link_profile.py` (`urlopen` follows on its own). All three now follow redirects one hop at a
+  time, validating each (at most 10), as `fetch_page.py` and `crawl_adapter.py` already did:
+  `site_graph` and `page_network` through a shared `url_safety.get_validated()`, `link_profile`
+  through a validating urllib redirect handler. Checked live: an httpbin redirect to the metadata
+  address is refused by all three before any request is sent.
 - **A malformed port crashed the fetch instead of being refused.** `url_safety.validate_url`
   raised `ValueError` on `http://host:99999/` or `:abc`, so a hostile `Location` header aborted
   `fetch_page` (and with it a `generate_report.py` run). It now returns "invalid port".

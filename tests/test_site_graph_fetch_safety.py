@@ -241,3 +241,80 @@ def test_a_crawled_page_served_as_text_plain_is_still_not_a_page(net):
     answers["https://ex.com/notes"] = _page("https://ex.com/notes", "just text", "text/plain")
     result = site_graph.fetch_url("https://ex.com/notes")
     assert result["html"] == "" and result["error"].startswith("non-HTML content-type")
+
+
+# --- 3. the same defect in the other scripts that validate, then follow --------
+#
+# page_network.py validated the llms.txt URL and then called requests.get with its
+# default allow_redirects=True; link_profile.py validated and then used urlopen,
+# which follows redirects on its own. Both now check every hop.
+
+import urllib.error  # noqa: E402
+import urllib.request  # noqa: E402
+
+import requests  # noqa: E402  (page_network imports it inside the function)
+
+import link_profile  # noqa: E402
+import page_network  # noqa: E402
+
+
+def test_get_validated_is_the_shared_walker(monkeypatch):
+    monkeypatch.setattr(url_safety, "_resolve_host", lambda host: DNS[host])
+    calls = []
+    hops = {"https://ex.com/a": _redirect("https://ex.com/a", "https://cdn.ex.com/b"),
+            "https://cdn.ex.com/b": _page("https://cdn.ex.com/b")}
+    resp, error = url_safety.get_validated(lambda u: (calls.append(u), hops[u])[1], "https://ex.com/a")
+    assert error is None and resp.url == "https://cdn.ex.com/b" and calls == list(hops)
+    hops["https://cdn.ex.com/b"] = _redirect("https://cdn.ex.com/b", "http://10.1.2.3/")
+    resp, error = url_safety.get_validated(lambda u: hops[u], "https://ex.com/a")
+    assert resp is None and "10.1.2.3" in error and "redirect 2" in error
+
+
+def test_page_network_llms_txt_redirect_into_private_network_is_refused(monkeypatch):
+    requested = []
+
+    def get(url, **kw):
+        assert kw.get("allow_redirects") is False
+        requested.append(url)
+        return _redirect(url, "http://169.254.169.254/latest/meta-data/")
+
+    monkeypatch.setattr(url_safety, "_resolve_host", lambda host: DNS[host])
+    monkeypatch.setattr(requests, "get", get)
+    out = page_network.fetch_llms_txt("https://ex.com/llms.txt")
+    assert "169.254.169.254" in out["error"] and requested == ["https://ex.com/llms.txt"]
+
+
+def test_page_network_llms_txt_is_read_through_a_public_redirect(monkeypatch):
+    hops = {"https://ex.com/llms.txt": _redirect("https://ex.com/llms.txt", "https://www.ex.com/llms.txt", 301),
+            "https://www.ex.com/llms.txt": _page("https://www.ex.com/llms.txt", "# Ex\n- [API](https://ex.com/api)", "text/plain")}
+    monkeypatch.setattr(url_safety, "_resolve_host", lambda host: DNS[host])
+    monkeypatch.setattr(requests, "get", lambda u, **kw: hops[u])
+    for resp in hops.values():
+        resp.ok = resp.status_code < 400
+    out = page_network.fetch_llms_txt("https://ex.com/llms.txt")
+    assert out["status"] == 200 and "[API]" in out["text"]
+
+
+def _redirect_request(newurl):
+    handler = link_profile._ValidatingRedirectHandler()
+    req = urllib.request.Request("https://ex.com/page")
+    return handler.redirect_request(req, None, 302, "Found", {}, newurl)
+
+
+def test_link_profile_refuses_a_redirect_into_a_private_network(monkeypatch):
+    monkeypatch.setattr(url_safety, "_resolve_host", lambda host: DNS[host])
+    for target in ("http://169.254.169.254/latest/meta-data/", "https://rebind.ex.com/", "http://127.0.0.1/"):
+        with pytest.raises(urllib.error.URLError, match="URL safety check failed"):
+            _redirect_request(target)
+
+
+def test_link_profile_follows_a_public_redirect(monkeypatch):
+    monkeypatch.setattr(url_safety, "_resolve_host", lambda host: DNS[host])
+    assert _redirect_request("https://www.ex.com/new").full_url == "https://www.ex.com/new"
+
+
+def test_link_profile_fetches_through_the_validating_opener():
+    """urlopen would install no handler: the module must open through its own."""
+    handlers = [type(h) for h in link_profile._open.__self__.handlers]
+    assert link_profile._ValidatingRedirectHandler in handlers
+    assert urllib.request.HTTPRedirectHandler not in handlers
