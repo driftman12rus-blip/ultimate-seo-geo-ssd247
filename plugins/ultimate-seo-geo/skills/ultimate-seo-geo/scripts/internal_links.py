@@ -45,6 +45,8 @@ except ImportError:
     print("Error: beautifulsoup4 required. Install with: pip install beautifulsoup4")
     sys.exit(1)
 
+from site_graph import accessible_name  # noqa: E402  (needs bs4, checked above)
+
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO/1.8)"}
 
@@ -91,7 +93,9 @@ def extract_internal_links(html: str, page_url: str, domain: str) -> list:
             continue
         seen.add(key)
 
-        anchor_text = tag.get_text(strip=True)[:80] or "[no text]"
+        # The accessible name, not just visible text: a logo link named by its
+        # image's alt, or a card link carrying aria-label, has anchor text.
+        anchor_text = accessible_name(tag)[:80] or "[no text]"
         nofollow = "nofollow" in (tag.get("rel", []) or [])
         links.append({
             "url": target,
@@ -469,8 +473,9 @@ def anchor_audit(graph: dict) -> dict:
     repeats the link. A link is in-content when its region and container are not
     page chrome and it is not one of the links repeating on 80% of pages
     (navigation_checker.global_links), which also catches footers built from
-    plain divs. Empty anchors are counted but not judged: an image link's text is
-    its alt attribute, which the graph does not record.
+    plain divs. Anchors are the link's accessible name (aria-label, aria-labelledby,
+    visible text, then image alt / SVG title), as site_graph records it; links
+    with none are counted as empty, not judged.
     """
     import navigation_checker  # lazy: only --graph needs the site-structure modules
 
@@ -565,7 +570,7 @@ def anchor_issues(audit: dict) -> list:
             "fix": ("Rewrite each anchor to say what the target is (\"read the pricing guide\", not \"read more\"). "
                     "On card lists, put the link on the card's title instead of a trailing \"Read more\"."),
             "confidence": "Confirmed",
-            "falsifiability": "Wrong if the vague links carry aria-label or title text naming the target (the graph records visible text only).",
+            "falsifiability": "Wrong if the vague links are named by text the graph cannot see (a label injected by JavaScript); aria-label, aria-labelledby and image alt are already read.",
             "leading_indicator": "vague_links_count in the next run.",
             "urls": [e["url"] for e in blind[:10]],
             "lane": "Auto",
