@@ -354,3 +354,25 @@ def test_every_soup_consumer_reads_an_odd_case_type_attribute():
     assert len(ecommerce_schema.extract_jsonld(_ODD_CASE)) == 2
     assert any(b.get("@type") == "Organization" for b in maps_checker._extract_jsonld_blocks(soup))
     assert drift_monitor.extract_snapshot(_ODD_CASE, "https://acme.example/")["schema_count"] == 2
+
+
+# --- programmatic_seo_auditor: the crawl sample must not depend on hash order --
+
+import subprocess  # noqa: E402
+
+_LINKS_PAGE = "<html><body>" + "".join(f'<a href="/p/{i}">p{i}</a>' for i in range(40)) + '<a href="/p/3">dup</a></body></html>'
+
+
+def _links_under_seed(seed: str) -> list:
+    code = ("import json, sys; sys.path.insert(0, sys.argv[1]); import programmatic_seo_auditor as p; "
+            "print(json.dumps(p._extract_meta(sys.argv[2], 'https://ex.com/')['internal_links']))")
+    out = subprocess.run([sys.executable, "-c", code, SCRIPTS, _LINKS_PAGE], capture_output=True, text=True,
+                         env={**os.environ, "PYTHONHASHSEED": seed}, check=True)
+    return json.loads(out.stdout)
+
+
+def test_programmatic_seo_links_keep_page_order_whatever_the_hash_seed():
+    """posthog.com scored 27, 43, 43 and 0 on four runs of the same code."""
+    first, second = _links_under_seed("1"), _links_under_seed("2")
+    assert first == second
+    assert first == [f"https://ex.com/p/{i}" for i in range(40)]

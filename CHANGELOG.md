@@ -119,6 +119,11 @@ miscounted on real data, a GA4 sign-in path that did not exist, JSON-LD in `@gra
     opportunities; defects must now show a complete inventory too.
   - `parse_html.py`, `image_checker.py` and `meta_lengths_checker.py` lose a dead lxml branch that
     could never be taken; `parse_html.py` reads a non-UTF-8 saved page instead of crashing.
+- **`programmatic_seo` scored differently on every run of the same site.** Page links were
+  deduplicated through a `set`, whose order Python randomises per process, so the capped crawl
+  sampled different pages each time: posthog.com scored 27, 43, 43 and 0 on four runs, moving the
+  Health Score about 2 points by chance. Links now keep page order. Found in this release's live
+  verification runs.
 
 ### Documentation
 - `extensions/dataforseo/README.md` verified with `backlink_analyzer.py --source dataforseo`, a
