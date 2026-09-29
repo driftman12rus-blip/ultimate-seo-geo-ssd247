@@ -109,12 +109,21 @@ def _check_oauth_token(env_var: str, token_filename: str | None) -> dict:
     if path and os.path.isfile(path):
         return {"available": True, "source": env_var, "path": path}
 
-    if env_var == "GSC_CREDENTIALS":
+    if env_var in ("GSC_CREDENTIALS", "GA4_CREDENTIALS"):
         sys.path.insert(0, SCRIPT_DIR)
         import google_auth  # stdlib-only at import
         login_path = google_auth.token_path()
         if os.path.isfile(login_path):
-            return {"available": True, "source": "google_auth.py login", "path": login_path}
+            if env_var == "GSC_CREDENTIALS":
+                return {"available": True, "source": "google_auth.py login", "path": login_path}
+            # GA4 is opt-in: the saved login counts only when it was made with --ga4.
+            try:
+                granted = google_auth._saved_scopes(login_path) or []
+            except google_auth.AuthError as e:
+                granted = []
+                print(f"Warning: {e}", file=sys.stderr)
+            if set(google_auth.GA4_SCOPES) <= set(granted):
+                return {"available": True, "source": "google_auth.py login --ga4", "path": login_path}
 
     if token_filename:
         default_path = os.path.join(REPO_ROOT, token_filename)
@@ -183,9 +192,10 @@ def detect_tier() -> dict:
             "requires": "Tier 2 — OAuth2 with GA4 scope",
             "env_var": "GA4_CREDENTIALS",
             "setup": (
-                "Create OAuth credentials with Analytics Reporting scope, "
-                "enable the GA4 Data API in GCP, and set GA4_CREDENTIALS "
-                "to the token JSON path."
+                "Sign in once: python3 scripts/google_auth.py setup, then "
+                "python3 scripts/google_auth.py login --ga4 (browser, read-only, no Google "
+                "Cloud project). Advanced: a service account added as a viewer on the GA4 "
+                "property via GOOGLE_APPLICATION_CREDENTIALS."
             ),
         })
 
@@ -205,14 +215,12 @@ def detect_tier() -> dict:
         )
     elif detected_tier == 0:
         upgrade = (
-            "Set GOOGLE_APPLICATION_CREDENTIALS to a service account JSON "
-            "with Search Console API scope to unlock Tier 1. "
-            "Or run: python scripts/gsc_export.py --auth"
+            "Run python3 scripts/google_auth.py setup, then python3 scripts/google_auth.py login "
+            "to unlock Tier 1 (Search Console)."
         )
     elif detected_tier == 1:
         upgrade = (
-            "Set GA4_CREDENTIALS to an OAuth token with Analytics Reporting "
-            "scope to unlock Tier 2 (GA4 Data API)."
+            "Run python3 scripts/google_auth.py login --ga4 to unlock Tier 2 (GA4 Data API)."
         )
     elif detected_tier == 2:
         upgrade = "Tier 3 (Google Ads / Keyword Planner) is planned but not yet implemented."

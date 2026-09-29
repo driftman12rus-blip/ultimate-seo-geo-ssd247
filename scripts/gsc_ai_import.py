@@ -30,6 +30,7 @@ Usage:
 import argparse
 import csv
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -60,15 +61,32 @@ def _normalise_header(name: str) -> str:
     return name.replace("﻿", "").strip().lower()
 
 
-def _parse_impressions(raw: str) -> int:
-    """Parse an impression count, tolerating thousands separators and blanks."""
-    cleaned = (raw or "").strip().replace(",", "").replace(" ", "").replace(" ", "")
+# Group separators Search Console uses across locales: space, no-break and thin spaces, apostrophes.
+_GROUP_SPACES = re.compile(r"[\s\u00a0\u202f\u2009'\u2019]")
+
+
+def _parse_impressions(raw: str) -> int | None:
+    """Parse an impression count in any locale's format; None when it is not a number.
+
+    Impressions are whole numbers, so one separator followed by exactly three digits
+    ("1,234", "1.234", "1 234") is a thousands separator, never a decimal point.
+    A blank cell is 0.
+    """
+    cleaned = _GROUP_SPACES.sub("", raw or "")
     if not cleaned:
         return 0
-    try:
-        return int(float(cleaned))
-    except ValueError:
-        return 0
+    if re.fullmatch(r"\d+", cleaned):
+        return int(cleaned)
+    if re.fullmatch(r"\d{1,3}([.,])\d{3}(?:\1\d{3})*", cleaned):
+        return int(re.sub(r"[.,]", "", cleaned))
+    grouped = re.fullmatch(r"(\d{1,3}(?:([.,])\d{3})*)([.,])(\d+)", cleaned)
+    if grouped and grouped.group(2) and grouped.group(2) != grouped.group(3):
+        # "1,234.0" or "1.234,0": group separator, then a different decimal mark.
+        whole = re.sub(r"[.,]", "", grouped.group(1))
+        return int(float(f"{whole}.{grouped.group(4)}"))
+    if re.fullmatch(r"\d+[.,]\d+", cleaned):
+        return int(float(cleaned.replace(",", ".")))
+    return None
 
 
 def import_ai_csv(path: str) -> dict:
@@ -120,15 +138,20 @@ def import_ai_csv(path: str) -> dict:
 
     dimensions = [name for _, name in dimension_cols]
     rows: list[dict] = []
-    for record in reader:
+    unparseable: list[dict] = []
+    for line_no, record in enumerate(reader, start=2):
         if not record or all(not c.strip() for c in record):
             continue
         entry: dict = {}
         for idx, name in dimension_cols:
             entry[name] = record[idx].strip() if idx < len(record) else ""
-        entry["impressions"] = _parse_impressions(
-            record[impression_col] if impression_col < len(record) else ""
-        )
+        raw = record[impression_col] if impression_col < len(record) else ""
+        impressions = _parse_impressions(raw)
+        if impressions is None:
+            # Left out of rows and totals, and reported: a zero would understate the report silently.
+            unparseable.append({"line": line_no, "value": raw, **entry})
+            continue
+        entry["impressions"] = impressions
         rows.append(entry)
 
     return {
@@ -139,6 +162,7 @@ def import_ai_csv(path: str) -> dict:
         "total_impressions": sum(r["impressions"] for r in rows),
         "row_count": len(rows),
         "ignored_columns": ignored,
+        "unparseable_impressions": {"count": len(unparseable), "rows": unparseable[:20]},
         "metrics_unavailable": ["clicks", "ctr", "position", "queries"],
         "note": (
             "Impressions only. Search Console's generative AI reports provide no clicks, CTR, "
@@ -157,6 +181,12 @@ def print_human(result: dict, top: int) -> None:
     print(f"Source: {result['source_file']}")
     print(f"Dimensions: {', '.join(result['dimensions'])}")
     print("=" * 70)
+
+    bad = result.get("unparseable_impressions") or {}
+    if bad.get("count"):
+        examples = ", ".join(f"line {b['line']}: {b['value']!r}" for b in bad["rows"][:5])
+        print(f"Warning: {bad['count']:,} rows have an impressions value that is not a number and are "
+              f"left out of every total ({examples}).")
 
     rows = result["rows"]
     if not rows:

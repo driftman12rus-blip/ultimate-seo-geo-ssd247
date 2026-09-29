@@ -16,3 +16,7 @@ google-auth-oauthlib>=1.2.0,<2
 # Omitting this is why `pip install -r requirements-gsc.txt` used to satisfy
 # gsc_export.py but leave gsc_query.py failing on ImportError.
 google-api-python-client>=2.100.0,<3
+
+# GA4 Data API client (google.analytics.data_v1beta) — ga4_report.py and
+# ga4_audit.py. Sign in with  python3 scripts/google_auth.py login --ga4
+google-analytics-data>=0.18.0,<1

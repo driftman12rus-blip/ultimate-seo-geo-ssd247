@@ -74,6 +74,6 @@ Industry ranges for orientation only. For a verified property, judge CTR against
 | 5 | 5–7% | Rewrite title + meta; optimize for featured snippet |
 | 10 | 2–3% | Major content upgrade to push to top 5 |
 
-**AI traffic**: `python scripts/ga4_report.py --property ID --ai-referrals --json` groups GA4 sessions from ChatGPT (`chatgpt.com`, including its `utm_source=chatgpt.com` links), Perplexity, Claude, Gemini, Copilot and others by source and landing page. Clicks with neither a referrer nor a UTM still read as Direct, so the number is a floor.
+**AI traffic**: `python scripts/ga4_report.py --property ID --ai-referrals --json` groups GA4 sessions from ChatGPT (`chatgpt.com`, including its `utm_source=chatgpt.com` links), Perplexity, Claude, Gemini, Copilot and others by source and landing page. Clicks with neither a referrer nor a UTM still read as Direct, so the number is a floor. GA4 access is opt-in: sign in once with `python3 scripts/google_auth.py login --ga4` (the plain `login` covers Search Console only).
 
 → See `references/analytics-reporting.md`

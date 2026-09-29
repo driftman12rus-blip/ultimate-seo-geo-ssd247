@@ -117,6 +117,7 @@ def urls_from_sitemap(sitemap_url: str, max_urls: int, timeout: int = 30) -> lis
     out: list[str] = []
     seen_page: set[str] = set()
     seen_fetch: set[str] = set()
+    failed: list[str] = []
 
     def fetch_one(url: str) -> str:
         resp = requests.get(
@@ -137,10 +138,16 @@ def urls_from_sitemap(sitemap_url: str, max_urls: int, timeout: int = 30) -> lis
         if url in seen_fetch or len(out) >= max_urls:
             return
         seen_fetch.add(url)
-        try:
-            body = fetch_one(url)
-        except Exception:
-            return
+        if url == sitemap_url:
+            body = fetch_one(url)  # the sitemap asked for: a failure ends the run with its cause
+        else:
+            try:
+                body = fetch_one(url)
+            except Exception as e:  # requests HTTP, connection and timeout errors
+                # One broken child of a sitemap index should not lose the others; say which one failed.
+                failed.append(f"{url}: {e}")
+                print(f"Warning: could not read child sitemap {url}: {e}", file=sys.stderr)
+                return
         if is_sitemap_index(body):
             for child in all_locs(body):
                 if len(out) >= max_urls:
@@ -158,6 +165,8 @@ def urls_from_sitemap(sitemap_url: str, max_urls: int, timeout: int = 30) -> lis
         walk(sitemap_url)
     except Exception as e:
         raise SystemExit(f"Failed to read sitemap {sitemap_url}: {e}") from e
+    if not out and failed:
+        raise SystemExit(f"Failed to read any child sitemap of {sitemap_url}: " + "; ".join(failed[:5]))
     return out[:max_urls]
 
 

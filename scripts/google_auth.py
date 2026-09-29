@@ -4,15 +4,18 @@ Sign in to Google Search Console once, for every copy of this skill.
 
     python3 scripts/google_auth.py setup     # install the Google libraries into the skill's own venv
     python3 scripts/google_auth.py login     # a browser opens: sign in, allow read-only access
+    python3 scripts/google_auth.py login --ga4   # also allow read-only Google Analytics (GA4)
     python3 scripts/google_auth.py status    # who is signed in, which properties you can read
     python3 scripts/google_auth.py logout    # revoke the token and delete it
 
 Login uses the skill's own OAuth client, so nobody needs a Google Cloud project.
 The token is saved once per user, outside the skill folder, and every installed copy
 reads it: ~/.config/ultimate-seo-geo/gsc-token.json ($XDG_CONFIG_HOME and
-$ULTIMATE_SEO_GEO_HOME move it). Access is read-only (webmasters.readonly).
+$ULTIMATE_SEO_GEO_HOME move it). Access is read-only (webmasters.readonly; with
+--ga4 also analytics.readonly, which ga4_report.py and ga4_audit.py need).
 
-gsc_query.py, gsc_insights.py and gsc_export.py load credentials through this module.
+gsc_query.py, gsc_insights.py and gsc_export.py load credentials through this module;
+ga4_report.py and ga4_audit.py fall back to it after their own GA4 credentials.
 The order is:
   1. GOOGLE_APPLICATION_CREDENTIALS (a service account JSON)
   2. GSC_CREDENTIALS (a saved OAuth token)
@@ -38,6 +41,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 
 GSC_SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
+GA4_SCOPES = ["https://www.googleapis.com/auth/analytics.readonly"]
 SITES_URL = "https://www.googleapis.com/webmasters/v3/sites"
 REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 
@@ -54,6 +58,7 @@ GOOGLE_PACKAGES = [
     "google-auth>=2.29.0,<3",
     "google-auth-oauthlib>=1.2.0,<2",
     "google-api-python-client>=2.100.0,<3",
+    "google-analytics-data>=0.18.0,<1",
     "requests>=2.31",
 ]
 
@@ -92,6 +97,23 @@ def venv_python() -> str:
 
 def _cmd(sub: str) -> str:
     return f"python3 {os.path.join(SCRIPT_DIR, 'google_auth.py')} {sub}"
+
+
+def _login_cmd(scopes: list[str]) -> str:
+    """The login that grants `scopes`: GA4 access is opt-in (login --ga4)."""
+    return _cmd("login --ga4") if set(GA4_SCOPES) & set(scopes) else _cmd("login")
+
+
+def _saved_scopes(path: str) -> list[str] | None:
+    """Scopes recorded in a saved authorized-user token, or None when it records none."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            saved = json.load(f).get("scopes")
+    except (ValueError, OSError, AttributeError) as e:
+        raise AuthError(f"Saved token {path} could not be read ({e}). Run:\n  {_cmd('login')}") from e
+    if isinstance(saved, str):
+        saved = saved.split()
+    return list(saved) if saved else None
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +224,20 @@ def load_credentials(scopes: list[str] | None = None, token_env: str = "GSC_CRED
     scopes = scopes or GSC_SCOPES
     sources = credential_sources(token_env)
     if not sources:
-        raise AuthError(f"Not signed in to Search Console. Run:\n  {_cmd('login')}")
+        what = "Google Analytics" if set(GA4_SCOPES) & set(scopes) else "Search Console"
+        raise AuthError(f"Not signed in to {what}. Run:\n  {_login_cmd(scopes)}")
     kind, path = sources[0]
     if not os.path.isfile(path):
         raise AuthError(f"{'GOOGLE_APPLICATION_CREDENTIALS' if kind == 'service_account' else token_env} "
                         f"points to a missing file: {path}")
+    saved = None
+    if kind != "service_account":
+        # Checked before the libraries load: a GSC-only login asked for GA4 needs `login --ga4`, not setup.
+        saved = _saved_scopes(path)
+        missing = [s for s in scopes if saved is not None and s not in saved]
+        if missing:
+            raise AuthError(f"The saved sign-in at {path} does not include {', '.join(missing)}. "
+                            f"Sign in again to grant it:\n  {_login_cmd(scopes)}")
     ensure_google_libs()
     if kind == "service_account":
         from google.oauth2 import service_account
@@ -220,18 +251,20 @@ def load_credentials(scopes: list[str] | None = None, token_env: str = "GSC_CRED
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     try:
-        creds = Credentials.from_authorized_user_file(path, scopes)
+        # Keep every scope the token holds, so a refresh (and the re-save below) never narrows a
+        # GSC + GA4 token down to the scopes of whichever script ran first.
+        creds = Credentials.from_authorized_user_file(path, saved or scopes)
     except (ValueError, OSError) as e:
         raise AuthError(f"Saved token {path} could not be read ({e}). Run:\n  {_cmd('login')}") from e
     if creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
         except RefreshError as e:
-            raise AuthError(f"The saved sign-in expired or was revoked ({e}). Run:\n  {_cmd('login')}") from e
+            raise AuthError(f"The saved sign-in expired or was revoked ({e}). Run:\n  {_login_cmd(scopes)}") from e
         if kind == "oauth_login":
             save_token(creds, path)
     if not creds.valid:
-        raise AuthError(f"The saved sign-in at {path} is not usable. Run:\n  {_cmd('login')}")
+        raise AuthError(f"The saved sign-in at {path} is not usable. Run:\n  {_login_cmd(scopes)}")
     return creds, {"kind": kind, "path": path}
 
 
@@ -269,11 +302,18 @@ def _properties(creds) -> dict:
 # Commands
 # ---------------------------------------------------------------------------
 
-def login(client_secrets: str | None = None, no_browser: bool = False, token: str | None = None) -> dict:
+def login_scopes(ga4: bool = False) -> list[str]:
+    """Search Console always; Google Analytics only when asked for (login --ga4)."""
+    return GSC_SCOPES + GA4_SCOPES if ga4 else list(GSC_SCOPES)
+
+
+def login(client_secrets: str | None = None, no_browser: bool = False, token: str | None = None,
+          ga4: bool = False) -> dict:
     config = client_config(client_secrets)
     ensure_google_libs()
     from google_auth_oauthlib.flow import InstalledAppFlow
-    flow = InstalledAppFlow.from_client_config(config, GSC_SCOPES)
+    scopes = login_scopes(ga4)
+    flow = InstalledAppFlow.from_client_config(config, scopes)
     # run_console() (copy-paste codes) was removed from google-auth-oauthlib 1.x with Google's
     # out-of-band flow; without a browser here, print the URL and keep the local redirect.
     creds = flow.run_local_server(
@@ -283,7 +323,7 @@ def login(client_secrets: str | None = None, no_browser: bool = False, token: st
         success_message="Signed in to Search Console. You can close this tab.",
     )
     path = save_token(creds, token)
-    return {"ok": True, "token": path, "scopes": GSC_SCOPES, **_properties(creds)}
+    return {"ok": True, "token": path, "scopes": scopes, **_properties(creds)}
 
 
 def status() -> dict:
@@ -335,13 +375,15 @@ def main(argv: list[str] | None = None) -> int:
     p_login = sub.add_parser("login", help="Open a browser, sign in, save a read-only token")
     p_login.add_argument("--client-secrets", help="Use your own Desktop-app OAuth client JSON instead")
     p_login.add_argument("--no-browser", action="store_true", help="Print the sign-in URL instead of opening it")
+    p_login.add_argument("--ga4", action="store_true",
+                         help="Also allow read-only Google Analytics access (ga4_report.py, ga4_audit.py)")
     sub.add_parser("status", help="Show the credential in use and the properties it can read")
     sub.add_parser("logout", help="Revoke and delete the saved sign-in")
     sub.add_parser("setup", help="Install the Google libraries into the skill's own venv")
     args = parser.parse_args(argv)
     try:
         if args.command == "login":
-            out = login(args.client_secrets, args.no_browser)
+            out = login(args.client_secrets, args.no_browser, ga4=args.ga4)
         elif args.command == "status":
             out = status()
         elif args.command == "logout":

@@ -5,9 +5,11 @@ Query GA4 Data API for traffic, landing page, and engagement data (Tier 2 — OA
 Returns sessions, users, engagement rate, bounce rate, and conversions grouped
 by landing page, source/medium, or date.
 
-Credentials (any one):
+Credentials (first found wins):
   - Service account: set GOOGLE_APPLICATION_CREDENTIALS to the JSON path
   - OAuth token: set GA4_CREDENTIALS to a saved token JSON path
+    (or ga4-oauth-token.json in the skill folder)
+  - The skill's own sign-in: python3 scripts/google_auth.py login --ga4
 
 Usage:
     python scripts/ga4_report.py --property 123456789 --days 28 --json
@@ -28,19 +30,22 @@ from datetime import date, timedelta
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+GA4_SCOPES = ["https://www.googleapis.com/auth/analytics.readonly"]
 
 TIER_UPGRADE_MSG = (
-    "Tier 2 credentials required for GA4 Data API.\n"
-    "Options:\n"
-    "  1. Service account: set GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json\n"
-    "     (service account must be added as a viewer to the GA4 property)\n"
-    "  2. OAuth token: set GA4_CREDENTIALS=/path/to/token.json\n"
-    "Run  python scripts/google_api_tier.py --check  to see current tier."
+    "Tier 2 credentials required for GA4 Data API. Sign in once (a browser opens, read-only):\n"
+    "  python3 scripts/google_auth.py setup\n"
+    "  python3 scripts/google_auth.py login --ga4\n"
+    "Advanced: a service account added as a viewer on the GA4 property "
+    "(GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json)."
 )
 
 INSTALL_MSG = (
-    "Install the GA4 Data API client:\n"
-    "  pip install google-analytics-data google-auth"
+    "Install the GA4 Data API client once:\n"
+    "  python3 scripts/google_auth.py setup"
 )
 
 VALID_METRICS = [
@@ -140,10 +145,7 @@ def _load_ga4_client(property_id: str):
     if token_path and os.path.isfile(token_path):
         try:
             from google.oauth2.credentials import Credentials
-            creds = Credentials.from_authorized_user_file(
-                token_path,
-                scopes=["https://www.googleapis.com/auth/analytics.readonly"],
-            )
+            creds = Credentials.from_authorized_user_file(token_path, scopes=GA4_SCOPES)
             if creds.expired and creds.refresh_token:
                 from google.auth.transport.requests import Request
                 creds.refresh(Request())
@@ -153,8 +155,29 @@ def _load_ga4_client(property_id: str):
             print(json.dumps({"error": f"Failed to load GA4 OAuth token: {e}"}))
             sys.exit(1)
 
-    print(json.dumps({"error": TIER_UPGRADE_MSG}))
-    sys.exit(1)
+    # The skill's own sign-in (google_auth.py login --ga4), shared with the Search Console scripts.
+    import google_auth
+    if not google_auth.credential_sources("GA4_CREDENTIALS"):
+        print(json.dumps({"error": TIER_UPGRADE_MSG}))
+        sys.exit(1)
+    try:
+        creds = google_auth.load_credentials(GA4_SCOPES, token_env="GA4_CREDENTIALS")[0]
+    except google_auth.AuthError as e:
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
+    return BetaAnalyticsDataClient(credentials=creds)
+
+
+def date_window(days: int, end_date: str | None = None, start_date: str | None = None,
+                today: date | None = None) -> tuple[date, date]:
+    """(start, end) of an inclusive window of `days` days; GA4 date ranges count both ends."""
+    end = (today or date.today()) - timedelta(days=1)
+    if end_date:
+        end = date.fromisoformat(end_date)
+    start = end - timedelta(days=days - 1)
+    if start_date:
+        start = date.fromisoformat(start_date)
+    return start, end
 
 
 def run_ga4_report(
@@ -341,7 +364,7 @@ def main():
     )
     parser.add_argument(
         "--days", "-d", type=int, default=28,
-        help="Number of days to query (default: 28)",
+        help="Number of days to query, end date included (default: 28)",
     )
     parser.add_argument(
         "--start-date",
@@ -387,12 +410,7 @@ def main():
     if args.ai_referrals and (args.organic_only or args.top_landing):
         parser.error("--ai-referrals cannot be combined with --organic-only or --top-landing")
 
-    end = date.today() - timedelta(days=1)
-    if args.end_date:
-        end = date.fromisoformat(args.end_date)
-    start = end - timedelta(days=args.days)
-    if args.start_date:
-        start = date.fromisoformat(args.start_date)
+    start, end = date_window(args.days, args.end_date, args.start_date)
 
     metrics = DEFAULT_METRICS
     if args.metrics:

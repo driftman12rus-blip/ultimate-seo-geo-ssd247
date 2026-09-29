@@ -51,6 +51,10 @@ PROPERTY_LIMIT = (
 )
 
 SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
+API_MAX_ROWS = 25000  # rowLimit ceiling of one Search Analytics request
+# --top-pages / --top-queries page through the API up to this many rows: the API
+# orders rows by clicks, so the top N by impressions can sit far below the first N.
+TOP_N_MAX_ROWS = 100_000
 GSC_API_BASE = "https://www.googleapis.com/webmasters/v3"
 
 INSTALL_MSG = (
@@ -87,6 +91,7 @@ def query_search_analytics(
     dimensions: list[str],
     query_filter: str | None = None,
     row_limit: int = 1000,
+    start_row: int = 0,
 ) -> dict:
     """
     Query the GSC Search Analytics API.
@@ -97,8 +102,10 @@ def query_search_analytics(
         "startDate": start_date,
         "endDate": end_date,
         "dimensions": dimensions,
-        "rowLimit": min(row_limit, 25000),
+        "rowLimit": min(row_limit, API_MAX_ROWS),
     }
+    if start_row:
+        body["startRow"] = start_row
 
     if query_filter:
         body["dimensionFilterGroups"] = [{
@@ -118,6 +125,39 @@ def query_search_analytics(
         return response
     except Exception as e:
         return {"error": str(e)}
+
+
+def fetch_all_rows(service, site_url: str, start_date: str, end_date: str, dimensions: list[str],
+                   query_filter: str | None = None, max_rows: int | None = None) -> tuple[dict, bool]:
+    """Page through Search Analytics (startRow) until the rows run out or max_rows is reached.
+
+    Returns ({"rows": [...]} or {"error": ...}, truncated).
+    """
+    max_rows = max_rows or TOP_N_MAX_ROWS
+    rows: list = []
+    while len(rows) < max_rows:
+        page_size = min(API_MAX_ROWS, max_rows - len(rows))
+        raw = query_search_analytics(service, site_url, start_date, end_date, dimensions,
+                                     query_filter=query_filter, row_limit=page_size, start_row=len(rows))
+        if "error" in raw:
+            return raw, False
+        batch = raw.get("rows", [])
+        rows.extend(batch)
+        if len(batch) < page_size:
+            return {"rows": rows}, False
+    return {"rows": rows}, True
+
+
+def date_window(days: int, end_date: str | None = None, start_date: str | None = None,
+                today: date | None = None) -> tuple[date, date]:
+    """(start, end) of an inclusive window of `days` days; the API counts both end dates."""
+    end = (today or date.today()) - timedelta(days=3)
+    if end_date:
+        end = date.fromisoformat(end_date)
+    start = end - timedelta(days=days - 1)
+    if start_date:
+        start = date.fromisoformat(start_date)
+    return start, end
 
 
 def format_rows(raw_response: dict, dimensions: list[str]) -> list[dict]:
@@ -233,7 +273,7 @@ def main():
     )
     parser.add_argument(
         "--days", "-d", type=int, default=28,
-        help="Number of days to query (default: 28)",
+        help="Number of days to query, end date included (default: 28)",
     )
     parser.add_argument(
         "--start-date",
@@ -262,11 +302,13 @@ def main():
     )
     parser.add_argument(
         "--top-pages", type=int,
-        help="Shortcut: top N pages by impressions (sets --dimension page, sorts by impressions)",
+        help=("Shortcut: top N pages by impressions (sets --dimension page; reads every row, "
+              f"up to {TOP_N_MAX_ROWS:,}, then sorts by impressions)"),
     )
     parser.add_argument(
         "--top-queries", type=int,
-        help="Shortcut: top N queries by impressions (sets --dimension query, sorts by impressions)",
+        help=("Shortcut: top N queries by impressions (sets --dimension query; reads every row, "
+              f"up to {TOP_N_MAX_ROWS:,}, then sorts by impressions)"),
     )
     parser.add_argument(
         "--limit", type=int, default=1000,
@@ -282,12 +324,7 @@ def main():
     )
     args = parser.parse_args()
 
-    end = date.today() - timedelta(days=3)
-    if args.end_date:
-        end = date.fromisoformat(args.end_date)
-    start = end - timedelta(days=args.days)
-    if args.start_date:
-        start = date.fromisoformat(args.start_date)
+    start, end = date_window(args.days, args.end_date, args.start_date)
 
     dimension = args.dimension
     row_limit = args.limit
@@ -299,23 +336,27 @@ def main():
     elif args.top_queries:
         dimension = "query"
         top_n = args.top_queries
-    if top_n and dimension == "query":
-        row_limit = top_n
-    # --top-pages fetches --limit rows, merges, then keeps N: the fragment rows of a
-    # top page can sit far below it in the API's click order.
+    # --top-pages / --top-queries read every row (up to TOP_N_MAX_ROWS), merge, then keep
+    # the N with most impressions: the API returns rows in click order, so the top N by
+    # impressions and a top page's fragment rows can sit far below the first N rows.
 
     creds = _load_credentials()
     service = _build_service(creds)
 
-    raw = query_search_analytics(
-        service=service,
-        site_url=args.site_url,
-        start_date=start.isoformat(),
-        end_date=end.isoformat(),
-        dimensions=[dimension],
-        query_filter=args.query,
-        row_limit=row_limit,
-    )
+    if top_n:
+        raw, truncated = fetch_all_rows(service, args.site_url, start.isoformat(), end.isoformat(),
+                                        [dimension], query_filter=args.query)
+    else:
+        raw = query_search_analytics(
+            service=service,
+            site_url=args.site_url,
+            start_date=start.isoformat(),
+            end_date=end.isoformat(),
+            dimensions=[dimension],
+            query_filter=args.query,
+            row_limit=row_limit,
+        )
+        truncated = None
 
     if "error" in raw:
         import google_auth
@@ -329,7 +370,8 @@ def main():
         sys.exit(1)
 
     rows = format_rows(raw, [dimension])
-    fetched = len(rows)
+    if truncated is None:
+        truncated = len(rows) >= min(row_limit, API_MAX_ROWS)
     limits = [PROPERTY_LIMIT]
     normalization = {"applied": False}
     if dimension == "page" and not args.keep_fragments:
@@ -346,7 +388,7 @@ def main():
         "end_date": end.isoformat(),
         "dimensions": [dimension],
         "row_count": len(rows),
-        "truncated": fetched >= min(row_limit, 25000),
+        "truncated": truncated,
         "page_normalization": normalization,
         "limits": limits,
         "rows": rows,

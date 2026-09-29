@@ -125,6 +125,30 @@ def _parse_collection_periods(raw_periods: list[dict]) -> list[str]:
     return dates
 
 
+def _density_value(d) -> float | None:
+    """One histogramTimeseries density -> percentage, or None when missing.
+
+    The CrUX History API returns plain floats, with the string "NaN" for
+    periods that have no data. A dict form ({"density": x}) is tolerated too.
+    """
+    if isinstance(d, dict):
+        d = d.get("density")
+    if d is None or isinstance(d, bool):
+        return None
+    try:
+        value = float(d)
+    except (TypeError, ValueError):
+        return None
+    if value != value:  # NaN
+        return None
+    return round(value * 100, 1)
+
+
+def _density_pcts(bucket: dict) -> list[float | None]:
+    """Per-period percentages for one histogram bin (None = no data)."""
+    return [_density_value(d) for d in bucket.get("densities", [])]
+
+
 def parse_history(raw: dict, metrics_filter: list[str] | None = None) -> dict:
     """
     Parse raw CrUX History API response into a structured result.
@@ -153,25 +177,21 @@ def parse_history(raw: dict, metrics_filter: list[str] | None = None) -> dict:
             continue
 
         percents = metric_obj.get("percentilesTimeseries", {})
-        p75_values = percents.get("p75s", [])
+        # Missing periods come back as the string "NaN" (or null); keep them
+        # as None so a gap is never mistaken for a real value.
+        p75_values = [
+            None if v is None or v == "NaN" else v
+            for v in percents.get("p75s", [])
+        ]
 
         histograms = metric_obj.get("histogramTimeseries", [])
         good_pcts = []
         ni_pcts = []
         poor_pcts = []
         if len(histograms) >= 3:
-            good_pcts = [
-                round((d.get("density") or 0) * 100, 1)
-                for d in histograms[0].get("densities", [])
-            ]
-            ni_pcts = [
-                round((d.get("density") or 0) * 100, 1)
-                for d in histograms[1].get("densities", [])
-            ]
-            poor_pcts = [
-                round((d.get("density") or 0) * 100, 1)
-                for d in histograms[2].get("densities", [])
-            ]
+            good_pcts = _density_pcts(histograms[0])
+            ni_pcts = _density_pcts(histograms[1])
+            poor_pcts = _density_pcts(histograms[2])
 
         parsed_metrics[label] = {
             "api_name": api_name,
@@ -219,7 +239,9 @@ def print_human(result: dict) -> None:
             if i < len(p75s):
                 val = p75s[i]
                 period = periods[i] if i < len(periods) else "?"
-                if unit == "ms" and isinstance(val, (int, float)) and val >= 1000:
+                if val is None:
+                    display = "n/a (no data)"
+                elif unit == "ms" and isinstance(val, (int, float)) and val >= 1000:
                     display = f"{val/1000:.1f}s"
                 elif unit == "ms":
                     display = f"{val}{unit}"
