@@ -165,25 +165,44 @@ def url_parts(url: str) -> dict:
 # Fetching
 # ---------------------------------------------------------------------------
 
-def fetch_url(url: str, timeout: int = 10) -> dict:
+MAX_REDIRECTS = 10
+
+
+def fetch_url(url: str, timeout: int = 10, plain_text: bool = False) -> dict:
     """Fetch one URL. Returns {status, final_url, html, headers, error}.
 
-    Goes through validate_url so a sitemap <loc> of file:///etc/passwd or a
-    link into a private network is refused rather than read. Never raises:
-    the caller records the error and the crawl is marked incomplete.
+    Every hop goes through validate_url, the first and each redirect target, so a
+    sitemap <loc> of file:///etc/passwd, a link into a private network, or a
+    public page that 302s to 169.254.169.254 is refused rather than read.
+    requests is never left to follow redirects itself: it would check nothing.
+    Never raises: the caller records the error and the crawl is marked incomplete.
+
+    The body is kept for HTML and XML. plain_text=True also keeps text/plain,
+    which is how robots.txt is served.
     """
     result = {"status": None, "final_url": url, "html": "", "headers": {}, "error": None}
-    safe = validate_url(url)
-    if not safe.ok:
-        result["error"] = f"URL safety check failed: {safe.reason}"
-        return result
+    current = url
     try:
-        resp = requests.get(safe.normalized_url, headers=HEADERS, timeout=timeout, allow_redirects=True)
+        for hop in range(MAX_REDIRECTS + 1):
+            safe = validate_url(current)
+            if not safe.ok:
+                where = "" if hop == 0 else f" (redirect {hop} to {current[:120]})"
+                result["error"] = f"URL safety check failed: {safe.reason}{where}"
+                return result
+            resp = requests.get(safe.normalized_url, headers=HEADERS, timeout=timeout, allow_redirects=False)
+            location = resp.headers.get("Location")
+            if not (resp.is_redirect and location):
+                break
+            current = urljoin(resp.url, location)
+        else:
+            result["error"] = f"too many redirects (over {MAX_REDIRECTS})"
+            return result
         result["status"] = resp.status_code
         result["final_url"] = resp.url
         result["headers"] = {k.lower(): v for k, v in resp.headers.items()}
         ctype = result["headers"].get("content-type", "")
-        if resp.status_code == 200 and ("html" in ctype or "xml" in ctype or not ctype):
+        wanted = "html" in ctype or "xml" in ctype or not ctype or (plain_text and "text/plain" in ctype)
+        if resp.status_code == 200 and wanted:
             # requests falls back to ISO-8859-1 when the header names no charset,
             # which turns every non-ASCII nav anchor into mojibake ("agent setup â").
             # Modern HTML is UTF-8; trust the declared charset when there is one.
@@ -254,7 +273,7 @@ def discover_sitemap(site_url: str, timeout: int = 12, max_sitemaps: int = MAX_S
         "urls": {},
     }
     queue: deque[str] = deque()
-    robots = fetch_url(f"{base}/robots.txt", timeout=timeout)
+    robots = fetch_url(f"{base}/robots.txt", timeout=timeout, plain_text=True)
     if robots["status"] == 200 and robots["html"]:
         for line in robots["html"].splitlines():
             stripped = line.strip()
@@ -262,6 +281,7 @@ def discover_sitemap(site_url: str, timeout: int = 12, max_sitemaps: int = MAX_S
                 sm = stripped.split(":", 1)[1].strip()
                 if sm:
                     queue.append(sm)
+    declared = set(queue)
     declared_in_robots = len(queue) > 0
     for guess in SITEMAP_GUESSES:
         queue.append(base + guess)
@@ -284,11 +304,14 @@ def discover_sitemap(site_url: str, timeout: int = 12, max_sitemaps: int = MAX_S
         res = fetch_url(sm_url, timeout=timeout)
         body = res["html"]
         if res["status"] != 200 or not body or "<" not in body[:300]:
-            if out["found"] or sm_url in {base + g for g in SITEMAP_GUESSES}:
-                # A missing guess is not an error. A missing child sitemap is.
-                if out["found"] and sm_url not in {base + g for g in SITEMAP_GUESSES}:
-                    out["sources"].append({"url": sm_url, "status": res["status"], "url_count": 0, "is_index": False, "error": res["error"]})
-                    out["reasons"].append(f"child sitemap unreadable: {sm_url} ({res['error']})")
+            # A missing guess is not an error. A sitemap robots.txt declares, or a
+            # child an index lists, is: the site says it exists, so the inventory
+            # is incomplete without it.
+            if sm_url not in {base + g for g in SITEMAP_GUESSES}:
+                kind = "sitemap declared in robots.txt" if sm_url in declared else "child sitemap"
+                error = res["error"] or ("empty body" if not body else "not XML")
+                out["sources"].append({"url": sm_url, "status": res["status"], "url_count": 0, "is_index": False, "error": error})
+                out["reasons"].append(f"{kind} unreadable: {sm_url} ({error})")
             continue
         entries, children, is_index = parse_sitemap(body)
         out["found"] = True
@@ -309,7 +332,7 @@ def discover_sitemap(site_url: str, timeout: int = 12, max_sitemaps: int = MAX_S
 
     if not out["found"]:
         out["reasons"].append("no sitemap found in robots.txt or at the usual paths")
-    unreadable = any(s["status"] != 200 for s in out["sources"])
+    unreadable = any(s["error"] for s in out["sources"])
     out["complete"] = out["found"] and not truncated and not unreadable
     return out
 

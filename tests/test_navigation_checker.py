@@ -75,6 +75,7 @@ def test_fetch_defaults_to_utf8_when_no_charset(monkeypatch):
         url = S + "/"
         headers = {"Content-Type": "text/html"}
         encoding = "ISO-8859-1"
+        is_redirect = False
         content = "agent setup ↗".encode("utf-8")
 
         @property

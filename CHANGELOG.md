@@ -3,10 +3,30 @@
 ## [1.21.1] - 2026-09-28
 
 The report stops raising false Critical and High findings that a live run on posthog.com and
-smashingmagazine.com exposed, and every finding a person must act on now says what to do.
+smashingmagazine.com exposed, and every finding a person must act on now says what to do. The
+shared site crawl checks every redirect hop and reads the sitemaps robots.txt declares.
 Patch per D-020.
 
+### Security
+- **`site_graph.py` followed redirects into private networks.** `fetch_url` validated the first
+  URL, then let requests follow redirects unchecked, so a public page, sitemap `<loc>` or crawled
+  link that redirected to `169.254.169.254` (cloud metadata), loopback or an RFC 1918 host was
+  fetched, and its title, H1 and links went into `site_graph.json` and the report. It now follows
+  redirects itself, one hop at a time, validating each with `url_safety.validate_url` (at most
+  10), as `fetch_page.py` and `crawl_adapter.py` already did. Checked live: an httpbin redirect to
+  the metadata address is refused before any request is sent.
+- **A malformed port crashed the fetch instead of being refused.** `url_safety.validate_url`
+  raised `ValueError` on `http://host:99999/` or `:abc`, so a hostile `Location` header aborted
+  `fetch_page` (and with it a `generate_report.py` run). It now returns "invalid port".
+
 ### Fixed
+- **Sitemaps declared in robots.txt were never read.** robots.txt is served as `text/plain`, and
+  `site_graph.fetch_url` kept bodies only for HTML and XML, so its `Sitemap:` lines were dropped
+  and discovery fell back to four guessed paths. bbc.com read as a *complete* sitemap of 5 URLs
+  (its `/sitemap.xml`) while robots.txt declares dozens of sitemaps, and every absence claim gated
+  on a complete sitemap was made against those 5. robots.txt is now read; a crawled page served as
+  `text/plain` is still not a page. A sitemap robots.txt declares that fails to load, or loads but
+  is not XML, is now a stated reason and marks discovery incomplete; it used to vanish.
 - **Every page with labelled SVG icons got a Critical "Multiple `<title>` tags".** `parse_html.py`
   counted the `<title>` inside inline SVG (and MathML), which names the icon for screen readers.
   Both sites have one document title and were flagged. Only titles outside `<svg>`/`<math>` count

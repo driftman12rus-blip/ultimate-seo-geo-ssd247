@@ -37,7 +37,7 @@ def _serve(monkeypatch, pages, sitemaps=None, robots=None):
     """Serve an in-memory site. pages: url -> html (200). sitemaps: url -> xml."""
     sitemaps = sitemaps or {}
 
-    def fake_fetch(url, timeout=10):
+    def fake_fetch(url, timeout=10, **_kw):
         if url.endswith("/robots.txt"):
             if robots is None:
                 return {"status": 404, "final_url": url, "html": "", "headers": {}, "error": "HTTP 404"}
@@ -385,7 +385,7 @@ def test_slash_variants_are_fetched_once(monkeypatch):
     pages = {SITE: _page(_links("/a", "/a/", "/a#x", "/a?utm=1")), "https://ex.com/a": _page("")}
     _serve(monkeypatch, pages)
     real = site_graph.fetch_url
-    monkeypatch.setattr(site_graph, "fetch_url", lambda url, timeout=10: (calls.append(url), real(url, timeout))[1])
+    monkeypatch.setattr(site_graph, "fetch_url", lambda url, timeout=10, **kw: (calls.append(url), real(url, timeout, **kw))[1])
     c = site_graph.crawl(SITE, max_pages=10)
     assert set(c["pages"]) == {SITE, "https://ex.com/a"}
     assert sum(1 for u in calls if site_graph.page_key(u) == "https://ex.com/a") == 1
@@ -475,7 +475,7 @@ def test_relative_links_resolve_against_the_url_the_fetch_ended_on():
 
 def test_a_crawl_that_lands_on_www_records_the_pages_relative_links_on_www(monkeypatch):
     """smashingmagazine.com started at the apex: every page 301s to www and links relatively."""
-    def fetch(url, timeout=10):
+    def fetch(url, timeout=10, **_kw):
         if url.endswith("/robots.txt") or "sitemap" in url:
             return {"status": 404, "final_url": url, "html": "", "headers": {}, "error": "HTTP 404"}
         final = url.replace("https://ex.com", "https://www.ex.com")

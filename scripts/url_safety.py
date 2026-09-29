@@ -48,9 +48,14 @@ def normalize_url(url: str) -> str:
         # validate_url will return a clear failure for the original hostname.
         host = parsed.hostname.rstrip(".").lower()
 
+    try:
+        port = parsed.port
+    except ValueError:
+        # "http://x:99999/" or "http://x:abc/": left as given for validate_url to refuse.
+        return value
     netloc = host
-    if parsed.port is not None:
-        netloc = f"{host}:{parsed.port}"
+    if port is not None:
+        netloc = f"{host}:{port}"
     if parsed.username:
         userinfo = parsed.username
         if parsed.password:
@@ -165,6 +170,12 @@ def validate_url(url: str, *, resolve_dns: bool = True) -> UrlSafetyResult:
         return UrlSafetyResult(False, url, normalized, "missing hostname")
     if parsed.username or parsed.password:
         return UrlSafetyResult(False, url, normalized, "URL credentials are not allowed")
+    try:
+        parsed.port
+    except ValueError:
+        # Refuse, never raise: a redirect's Location header is remote input, and an
+        # exception here used to abort the whole fetch (or a whole report run).
+        return UrlSafetyResult(False, url, normalized, "invalid port")
 
     hostname = parsed.hostname.rstrip(".").lower()
     try:
