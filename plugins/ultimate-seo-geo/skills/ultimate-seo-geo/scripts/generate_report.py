@@ -77,20 +77,54 @@ def run_script(script_name: str, args: list, timeout: int = 120) -> dict:
         return {"error": str(e)}
 
 
+# Checks that read the fetched page itself. On a 4xx/5xx response they would
+# audit the error page — its title, its schema, its prose — and score the site
+# on it, so they are marked unmeasured with the status instead.
+PAGE_LEVEL_CHECKS = (
+    "onpage", "readability", "article", "schema_validation", "image_seo",
+    "hidden_instructions", "citability",
+)
+
+
+# Why fetch_page returned no page for a URL, read (and cleared) by collect_data.
+# A side table rather than a third return value keeps fetch_page's
+# (path, warning) contract, which callers and tests stub.
+PAGE_FETCH_ERRORS: dict[str, str] = {}
+
+
+def fetch_page_checked(url: str, render: str = "never") -> tuple[str, str, str]:
+    """Fetch page HTML to a temp file. Returns (path, render_warning, page_error).
+
+    page_error is set, and path is "", when the page answered 4xx/5xx: the
+    body is an error page, not the page being audited.
+    """
+    fetched = fetch_url(url, timeout=20, render=render)
+    warning = render_fallback_warning(fetched["render_error"]) if fetched.get("render_error") else ""
+    status = fetched.get("status_code")
+    if not fetched.get("error") and isinstance(status, int) and status >= 400:
+        return "", warning, (
+            f"Not measured: {url} answered HTTP {status}, so the page-level checks would have "
+            "audited the error page. Fix the status (or audit the URL that serves the page) and re-run."
+        )
+    if fetched.get("error") or not fetched.get("content"):
+        return "", warning, ""
+    tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
+    tmp.write(fetched["content"])
+    tmp.close()
+    return tmp.name, warning, ""
+
+
 def fetch_page(url: str, render: str = "never") -> tuple[str, str]:
     """Fetch page HTML to a temp file. Returns (path, render_warning).
 
     With render="auto" a failed render still returns the static HTML, and
-    render_warning says so; the page-level checks run on that content.
+    render_warning says so; the page-level checks run on that content. A
+    4xx/5xx page returns no path (see fetch_page_checked).
     """
-    fetched = fetch_url(url, timeout=20, render=render)
-    warning = render_fallback_warning(fetched["render_error"]) if fetched.get("render_error") else ""
-    if fetched.get("error") or not fetched.get("content"):
-        return "", warning
-    tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
-    tmp.write(fetched["content"])
-    tmp.close()
-    return tmp.name, warning
+    path, warning, page_error = fetch_page_checked(url, render=render)
+    if page_error:
+        PAGE_FETCH_ERRORS[url] = page_error
+    return path, warning
 
 
 def detect_environment(html_text: str, url: str) -> dict:
@@ -253,8 +287,11 @@ def build_environment_fixes(data: dict) -> list:
     title = (op.get("title") or "").strip()
     meta = (op.get("meta_description") or "").strip()
     h1s = op.get("h1", []) if isinstance(op.get("h1"), list) else []
+    # An on-page parse that did not run (fetch failed, or the page answered
+    # 4xx/5xx) says nothing about the H1, meta description or title.
+    onpage_measured = isinstance(op, dict) and bool(op) and not op.get("error")
 
-    if not h1s:
+    if onpage_measured and not h1s:
         add(
             "critical",
             "Missing H1 on page",
@@ -262,7 +299,7 @@ def build_environment_fixes(data: dict) -> list:
             _platform_hint(platform, "heading"),
         )
 
-    if not meta or len(meta) < 110 or len(meta) > 170:
+    if onpage_measured and (not meta or len(meta) < 110 or len(meta) > 170):
         add(
             "warning",
             "Meta description is missing or out of range",
@@ -270,7 +307,7 @@ def build_environment_fixes(data: dict) -> list:
             _platform_hint(platform, "metadata"),
         )
 
-    if not title or len(title) < 30 or len(title) > 65:
+    if onpage_measured and (not title or len(title) < 30 or len(title) > 65):
         add(
             "warning",
             "Title tag needs optimization",
@@ -496,7 +533,10 @@ def build_environment_fixes(data: dict) -> list:
             "Rerun `pagespeed.py` with `--api-key` and then prioritize LCP/INP/CLS fixes from that output.",
         )
 
-    if rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25:
+    # An unmeasured readability run (too little text in the raw HTML) says
+    # nothing about how hard the page is to read.
+    if not rd.get("error") and (
+            rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25):
         add(
             "warning",
             "Content readability is difficult",
@@ -729,7 +769,12 @@ def collect_data(
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
+    PAGE_FETCH_ERRORS.pop(url, None)
     html_path, render_warning = fetch_page(url, render=render)
+    page_error = PAGE_FETCH_ERRORS.pop(url, "")
+    if page_error:
+        print(f"  ⚠️  {page_error}")
+        data["page_fetch_error"] = page_error
     if render_warning:
         print(f"  ⚠️  {render_warning}")
         data["render_warning"] = render_warning
@@ -801,6 +846,10 @@ def collect_data(
         analyses.append(("onpage", "parse_html.py", [html_path, "--url", url]))
         analyses.append(("readability", "readability.py", [html_path]))
         analyses.append(("article", "article_seo.py", [url]))
+    elif page_error:
+        # Unmeasured, with the reason, rather than absent or scored on the error page.
+        for name in PAGE_LEVEL_CHECKS:
+            data["sections"][name] = {"error": page_error, "measured": False}
 
     # Merge HTML-file-based checks into the same parallel batch.
     # html_path is already written to disk at this point, so all tasks are
@@ -1341,6 +1390,7 @@ _UNMEASURED_HINTS = {
     "pagespeed": "Set PAGESPEED_API_KEY and re-run, or run `pagespeed.py` on its own; the public quota is rate-limited.",
     "link_profile": "Re-run `link_profile.py` with a larger crawl.",
     "duplicate_content": "Re-run `duplicate_content.py`; it needs at least two fetched pages.",
+    "readability": "Re-run with `--render auto`: the page HTML carries too little text to score, usually a JavaScript-rendered page.",
 }
 
 

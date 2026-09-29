@@ -140,6 +140,26 @@ def probe_cors(url: str, method: str = "POST", timeout: int = 10) -> dict:
             "allow_methods": r.headers.get("access-control-allow-methods")}
 
 
+def preflight_allows(probe: dict | None, method: str) -> bool:
+    """True when a CORS preflight actually let `method` through.
+
+    A CDN that stamps Access-Control-Allow-Origin: * on every response puts it
+    on a 404 or 405 too; that header on a refused preflight admits nothing. The
+    preflight must answer 2xx and, when it lists Access-Control-Allow-Methods,
+    list the method (or "*").
+    """
+    if not probe or probe.get("error"):
+        return False
+    status = probe.get("status")
+    if not isinstance(status, int) or not 200 <= status < 300:
+        return False
+    listed = probe.get("allow_methods")
+    if not listed:
+        return True
+    methods = {m.strip().upper() for m in str(listed).split(",") if m.strip()}
+    return "*" in methods or method.upper() in methods
+
+
 def cors_verdict(page_cors: dict, probe: dict | None) -> str:
     """'any origin', 'reflects any origin', 'restricted', or 'unknown'."""
     if (page_cors or {}).get("access-control-allow-origin") == "*":
@@ -164,14 +184,19 @@ def analyse_page(page_url: str, network: list, probe=probe_cors, do_probe: bool 
             continue
         result = None
         writes = entry["method"] in WRITE_METHODS
+        probed_method = entry["method"] if entry["method"] not in ("GET", "HEAD") else "GET"
         if writes and do_probe and probed < MAX_PROBES and cors_verdict(entry.get("cors"), None) == "unknown":
-            result = probe(entry["url"], entry["method"] if entry["method"] not in ("GET", "HEAD") else "GET")
+            result = probe(entry["url"], probed_method)
             probed += 1
         verdict = cors_verdict(entry.get("cors"), result)
+        # When the verdict rests on our own preflight, the preflight has to have
+        # succeeded for this method; an Allow-Origin on a 404/405 opens nothing.
+        admitted = result is None or preflight_allows(result, probed_method)
         apis[key] = {"url": entry["url"], "method": entry["method"], "status": entry.get("status"),
                      "has_auth_header": entry.get("has_auth_header", False), "cors": verdict,
                      "writes": writes,
-                     "open": writes and verdict in ("any origin", "reflects any origin") and not entry.get("has_auth_header"),
+                     "open": (writes and verdict in ("any origin", "reflects any origin")
+                              and not entry.get("has_auth_header") and admitted),
                      "probe": result}
     third = {}
     vendors = {}
@@ -270,8 +295,11 @@ def classify_endpoint(url: str, get: dict, pre: dict) -> dict:
     auth = (get.get("status") == 401 or get.get("www_authenticate")
             or (get.get("status") == 403 and not html) or pre.get("status") == 401)
     verdict = cors_verdict({"access-control-allow-origin": "*"} if get.get("allow_origin") == "*" else {}, pre)
+    # "Accepts write calls" needs a preflight that let POST through: a CDN adds
+    # Allow-Origin: * to its 404s and 405s as well, and those accept nothing.
     return {"url": url, "kind": "endpoint", "get": get, "preflight": pre, "cors": verdict,
-            "asks_for_auth": bool(auth), "open": verdict in ("any origin", "reflects any origin") and not auth}
+            "asks_for_auth": bool(auth),
+            "open": verdict in ("any origin", "reflects any origin") and not auth and preflight_allows(pre, "POST")}
 
 
 # ---------------------------------------------------------------------------

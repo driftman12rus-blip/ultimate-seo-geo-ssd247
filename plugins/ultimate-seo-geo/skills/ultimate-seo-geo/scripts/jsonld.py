@@ -87,12 +87,37 @@ def nodes(data) -> list:
     A block may hold a single object or a top-level array of objects. Calling
     `.get()` straight on the array form raises `AttributeError` and kills the
     parse for the whole page.
+
+    An `@graph` container is expanded into its members: Yoast, Rank Math and
+    most WordPress SEO plugins emit one block of the form
+    `{"@context": ..., "@graph": [Organization, WebPage, Article, ...]}`, and
+    treating the wrapper as the node yields a single typeless "Unknown" entry
+    with every real type hidden behind it. The wrapper itself is kept (minus
+    its `@graph`) only when it declares an `@type` of its own. Members inherit
+    the wrapper's `@context` when they have none, so a has-context check does
+    not fail on every graph member.
     """
-    if isinstance(data, dict):
-        return [data]
     if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
-    return []
+        out = []
+        for item in data:
+            out.extend(nodes(item) if isinstance(item, dict) else [])
+        return out
+    if not isinstance(data, dict):
+        return []
+    graph = data.get("@graph")
+    if not isinstance(graph, list):
+        return [data]
+    out = []
+    if data.get("@type"):
+        out.append({k: v for k, v in data.items() if k != "@graph"})
+    context = data.get("@context")
+    for member in graph:
+        if not isinstance(member, dict):
+            continue
+        if context and "@context" not in member:
+            member = {"@context": context, **member}
+        out.extend(nodes(member))
+    return out
 
 
 def declares_type(html: str, wanted: str) -> bool:

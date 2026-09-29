@@ -34,6 +34,22 @@ from url_safety import validate_url
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO/1.8)"}
 
 
+# HEAD answers that often mean "this server does not do HEAD", not "this URL is
+# broken": 405/501 say so outright, and many CDNs and app servers answer HEAD
+# with 403 or 404 while GET serves the page. Taken at face value they put every
+# link on such a site under "redirect to an error page". The hop is asked again
+# with GET before its status is believed.
+HEAD_UNRELIABLE = (403, 404, 405, 501)
+
+
+def _get_hop(url: str, timeout: int):
+    """One GET for a hop HEAD could not answer: no redirects followed, body never read."""
+    resp = requests.get(url, timeout=timeout, headers=HEADERS,
+                        allow_redirects=False, stream=True)
+    resp.close()
+    return resp
+
+
 def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dict:
     """
     Follow and analyze the redirect chain for a URL.
@@ -98,6 +114,10 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
 
             resp = requests.head(safe.normalized_url, timeout=timeout,
                                  headers=HEADERS, allow_redirects=False)
+            method = "HEAD"
+            if resp.status_code in HEAD_UNRELIABLE:
+                resp = _get_hop(safe.normalized_url, timeout)
+                method = "GET"
 
             hop = {
                 "step": i + 1,
@@ -105,6 +125,8 @@ def check_redirects(url: str, max_redirects: int = 10, timeout: int = 10) -> dic
                 "status": resp.status_code,
                 "time_ms": round(resp.elapsed.total_seconds() * 1000),
             }
+            if method == "GET":
+                hop["method"] = "GET"
 
             if resp.status_code in (301, 302, 303, 307, 308):
                 location = resp.headers.get("Location", "")

@@ -8,6 +8,8 @@ Usage:
 """
 
 import argparse
+import codecs
+import re
 import sys
 from urllib.parse import urljoin
 
@@ -28,6 +30,39 @@ DEFAULT_HEADERS = {
     "Accept-Encoding": "gzip, deflate",
     "Connection": "keep-alive",
 }
+
+
+_META_CHARSET_RE = re.compile(rb"""<meta[^>]+charset\s*=\s*["']?\s*([A-Za-z0-9_.:\-]+)""", re.I)
+
+
+def _meta_charset(body) -> str | None:
+    """The charset a page declares in a <meta> tag near its start, if it is a real codec."""
+    if not isinstance(body, (bytes, bytearray)):
+        return None
+    m = _META_CHARSET_RE.search(bytes(body[:4096]))
+    if not m:
+        return None
+    name = m.group(1).decode("ascii", "replace")
+    try:
+        codecs.lookup(name)
+    except LookupError:
+        return None
+    return name
+
+
+def _body_text(response) -> str:
+    """The response body as text, UTF-8 unless the page says otherwise.
+
+    requests falls back to ISO-8859-1 when Content-Type names no charset, which
+    garbles every non-ASCII title and throws off the length checks. Same rule
+    as site_graph.fetch_url: a charset in the header wins, then a <meta
+    charset>, then UTF-8.
+    """
+    headers = getattr(response, "headers", None) or {}
+    ctype = next((str(v) for k, v in headers.items() if str(k).lower() == "content-type"), "")
+    if "charset" not in ctype.lower():
+        response.encoding = _meta_charset(getattr(response, "content", None)) or "utf-8"
+    return response.text
 
 
 def render_fallback_warning(render_error: str) -> str:
@@ -126,10 +161,10 @@ def fetch_page(
 
         result["url"] = response.url
         result["status_code"] = response.status_code
-        result["content"] = response.text
+        result["content"] = _body_text(response)
         result["headers"] = dict(response.headers)
 
-        if render == "always" or (render == "auto" and should_render(response.text)):
+        if render == "always" or (render == "auto" and should_render(result["content"])):
             rendered = render_url(response.url, timeout=timeout)
             if rendered.error:
                 # "auto" means render if possible: keep the static response

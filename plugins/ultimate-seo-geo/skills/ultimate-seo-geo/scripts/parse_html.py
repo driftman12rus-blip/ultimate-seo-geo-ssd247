@@ -102,7 +102,10 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
     Returns:
         Dictionary with extracted SEO data
     """
-    soup = BeautifulSoup(html, "lxml" if "lxml" in sys.modules else "html.parser")
+    # html.parser, always: lxml is not a dependency and was never imported, so
+    # the old `"lxml" if "lxml" in sys.modules` test could not pick it. One
+    # fixed parser keeps results identical whatever else is installed.
+    soup = BeautifulSoup(html, "html.parser")
 
     result = {
         "title": None,
@@ -263,23 +266,27 @@ def parse_html(html: str, base_url: Optional[str] = None) -> dict:
     # from the original source, not from the mutated tree.
     page_text = faq_parity.visible_text(html)
 
-    for script in soup.find_all("script", type="application/ld+json"):
+    # jsonld.script_blocks() is the one extractor: it matches the type
+    # attribute case-insensitively and wherever it sits in the tag, so the
+    # blocks parsed here are the blocks every other script counts.
+    for raw in jsonld.script_blocks(html):
         try:
-            schema_data = json.loads(script.string)
+            schema_data = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             result["schema"].append({
                 "error": "invalid_json",
-                "raw_snippet": (script.string or "")[:120],
+                "raw_snippet": (raw or "")[:120],
             })
             continue
 
+        # Expands @graph (Yoast / Rank Math) into its member nodes.
         nodes = jsonld.nodes(schema_data)
         if not nodes:
             # Valid JSON, but nothing object-shaped in it — say so rather than
             # dropping the block on the floor.
             result["schema"].append({
                 "error": "not_an_object",
-                "raw_snippet": (script.string or "")[:120],
+                "raw_snippet": (raw or "")[:120],
             })
             continue
 
@@ -310,7 +317,9 @@ def main():
         if not os.path.isfile(real_path):
             print(f"Error: File not found: {args.file}", file=sys.stderr)
             sys.exit(1)
-        with open(real_path, "r", encoding="utf-8") as f:
+        # errors="replace": a saved page in Windows-1252 or Latin-1 must still
+        # parse; a crash on one stray byte loses the whole audit.
+        with open(real_path, "r", encoding="utf-8", errors="replace") as f:
             html = f.read()
     else:
         html = sys.stdin.read()

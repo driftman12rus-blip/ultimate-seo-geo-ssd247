@@ -53,9 +53,11 @@ def normalize_url(url: str) -> str:
     except ValueError:
         # "http://x:99999/" or "http://x:abc/": left as given for validate_url to refuse.
         return value
-    netloc = host
+    # urlparse strips the brackets from an IPv6 literal; without them
+    # "2606:4700::1111" reads as a host plus port and the URL is refused.
+    netloc = f"[{host}]" if ":" in host else host
     if port is not None:
-        netloc = f"{host}:{port}"
+        netloc = f"{netloc}:{port}"
     if parsed.username:
         userinfo = parsed.username
         if parsed.password:
@@ -131,7 +133,18 @@ def _host_literal_ip(host: str) -> ipaddress._BaseAddress | None:
         return None
 
 
+# Carrier-grade NAT shared space (RFC 6598). Not public, and ipaddress reports
+# it as neither private nor global, so the flags below let it through.
+_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
 def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
+    # ::ffff:127.0.0.1 is 127.0.0.1; judge an IPv4-mapped address as its IPv4 self.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
+    if ip.version == 4 and ip in _CGNAT:
+        return True
     return any(
         (
             ip.is_private,
