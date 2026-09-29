@@ -33,7 +33,7 @@ from typing import List
 # builders put a data- attribute first. A pattern that wants `type` first finds
 # nothing on those pages and reports them as having no schema at all.
 _SCRIPT_BLOCK_RE = re.compile(
-    r'<script\b[^>]*?\btype\s*=\s*["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    r'<script\b[^>]*?\btype\s*=\s*["\']\s*application/ld\+json\s*["\'][^>]*>(.*?)</script>',
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -45,6 +45,17 @@ def script_blocks(html: str) -> List[str]:
     so the count and the validation can never disagree about what is on the page.
     """
     return _SCRIPT_BLOCK_RE.findall(html or "")
+
+
+def soup_blocks(soup) -> List[str]:
+    """script_blocks() for a caller that already holds a parsed page (a BeautifulSoup).
+
+    Matches the type attribute case-insensitively, as script_blocks() does:
+    find_all("script", type="application/ld+json") compares exactly and drops
+    type="application/LD+json". Duck-typed, so this module still imports no bs4.
+    """
+    return [tag.string or "" for tag in soup.find_all("script")
+            if str(tag.get("type") or "").strip().lower() == "application/ld+json"]
 
 
 def without_script_blocks(html: str) -> str:

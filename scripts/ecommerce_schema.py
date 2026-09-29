@@ -29,6 +29,7 @@ except ImportError:
     print("Error: beautifulsoup4 library required. Install with: pip install beautifulsoup4")
     sys.exit(1)
 
+import jsonld
 from fetch_page import fetch_page
 from url_safety import validate_url
 
@@ -74,8 +75,7 @@ def extract_jsonld(html: str) -> list[dict]:
     """Extract all JSON-LD blocks from HTML."""
     soup = BeautifulSoup(html, "html.parser")
     blocks = []
-    for script in soup.find_all("script", type="application/ld+json"):
-        text = script.string
+    for text in jsonld.soup_blocks(soup):
         if not text:
             continue
         try:

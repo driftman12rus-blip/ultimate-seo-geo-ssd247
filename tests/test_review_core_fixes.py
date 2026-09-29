@@ -319,3 +319,38 @@ def test_page_write_call_probed_with_a_405_preflight_is_not_reported():
     page = pn.analyse_page("https://example.com/", network,
                            probe=lambda u, m: {"status": 405, "allow_origin": "*"})
     assert page["open_endpoints"] == [] and pn.build_issues([page], None) == []
+
+
+# --- the same case-sensitive JSON-LD match in five more scripts -------------
+#
+# find_all("script", type="application/ld+json") compares the attribute exactly,
+# so type="application/LD+json" was dropped by article_seo, drift_monitor,
+# entity_checker, ecommerce_schema and maps_checker while script_blocks() counts it.
+
+from bs4 import BeautifulSoup as _Soup  # noqa: E402
+
+import article_seo  # noqa: E402
+import drift_monitor  # noqa: E402
+import ecommerce_schema  # noqa: E402
+import entity_checker  # noqa: E402
+import maps_checker  # noqa: E402
+
+_ODD_CASE = ('<html><head><script type=" Application/LD+JSON ">'
+             '{"@context":"https://schema.org","@type":"Organization","name":"Acme",'
+             '"url":"https://acme.example/","sameAs":["https://x.com/acme"]}</script>'
+             '<script type="application/ld+json">{"@type":"Dentist","name":"Smile"}</script>'
+             '<script type="text/javascript">var x = {"@type": "Product"};</script></head><body></body></html>')
+
+
+def test_soup_blocks_matches_script_blocks():
+    assert jsonld.soup_blocks(_Soup(_ODD_CASE, "html.parser")) == jsonld.script_blocks(_ODD_CASE)
+    assert len(jsonld.script_blocks(_ODD_CASE)) == 2
+
+
+def test_every_soup_consumer_reads_an_odd_case_type_attribute():
+    soup = _Soup(_ODD_CASE, "html.parser")
+    assert any("Organization" in str(b) for b in article_seo.extract_structured_data(soup))
+    assert any(e.get("type") == "Organization" for e in entity_checker.extract_entities_from_schema(soup))
+    assert len(ecommerce_schema.extract_jsonld(_ODD_CASE)) == 2
+    assert any(b.get("@type") == "Organization" for b in maps_checker._extract_jsonld_blocks(soup))
+    assert drift_monitor.extract_snapshot(_ODD_CASE, "https://acme.example/")["schema_count"] == 2
