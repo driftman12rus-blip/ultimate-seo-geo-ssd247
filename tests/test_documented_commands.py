@@ -24,10 +24,22 @@ import pytest
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 SCRIPTS = os.path.join(ROOT, "scripts")
 
-DOC_FILES = sorted(glob.glob(os.path.join(ROOT, "references", "**", "*.md"), recursive=True)) + [
-    os.path.join(ROOT, "AGENTS.md"),
-    os.path.join(ROOT, "SKILL.md"),
-]
+def _g(*parts, recursive=False):
+    return sorted(glob.glob(os.path.join(ROOT, *parts), recursive=recursive))
+
+
+# Every user-facing doc that can print a command: references, the skill entry
+# points, agent briefs, extension READMEs and the ChatGPT pack. The extension
+# docs were added after `extensions/dataforseo/README.md` shipped a
+# `--source dataforseo` "Verification" command that argparse rejects.
+DOC_FILES = (
+    _g("references", "**", "*.md", recursive=True)
+    + _g("agents", "*.md")
+    + _g("extensions", "**", "*.md", recursive=True)
+    + _g("chatgpt", "*.md")
+    + _g("chatgpt", "*.txt")
+    + [os.path.join(ROOT, n) for n in ("AGENTS.md", "SKILL.md", "README.md", "GEMINI.md")]
+)
 
 # `python scripts/foo.py ...` up to end of line or a closing backtick.
 INVOCATION = re.compile(r"python3?\s+scripts/([\w-]+\.py)((?:\s+[^\n`]*)?)")
@@ -95,6 +107,12 @@ def test_documented_choice_values_are_valid():
             if not m:
                 continue
             choices = set(re.findall(r"[\"']([\w-]+)[\"']", m.group(1)))
+            # `choices=["auto", *_BACKENDS]`: expand a splat of a module-level
+            # tuple/list literal so its members count as declared choices.
+            for name in re.findall(r"\*([A-Za-z_]\w*)", m.group(1)):
+                const = re.search(rf"^{name}\s*=\s*[\(\[]([^\)\]]*)[\)\]]", src, re.M)
+                if const:
+                    choices |= set(re.findall(r"[\"']([\w-]+)[\"']", const.group(1)))
             if value.isupper() or value.startswith("["):
                 continue  # placeholder like URL / N, not a literal value
             if value not in choices:

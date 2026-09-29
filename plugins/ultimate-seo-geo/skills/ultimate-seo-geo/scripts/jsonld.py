@@ -33,7 +33,7 @@ from typing import List
 # builders put a data- attribute first. A pattern that wants `type` first finds
 # nothing on those pages and reports them as having no schema at all.
 _SCRIPT_BLOCK_RE = re.compile(
-    r'<script\b[^>]*?\btype\s*=\s*["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    r'<script\b[^>]*?\btype\s*=\s*["\']\s*application/ld\+json\s*["\'][^>]*>(.*?)</script>',
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -45,6 +45,25 @@ def script_blocks(html: str) -> List[str]:
     so the count and the validation can never disagree about what is on the page.
     """
     return _SCRIPT_BLOCK_RE.findall(html or "")
+
+
+def soup_blocks(soup) -> List[str]:
+    """script_blocks() for a caller that already holds a parsed page (a BeautifulSoup).
+
+    Matches the type attribute case-insensitively, as script_blocks() does:
+    find_all("script", type="application/ld+json") compares exactly and drops
+    type="application/LD+json". Duck-typed, so this module still imports no bs4.
+    """
+    return [tag.string or "" for tag in soup.find_all("script")
+            if str(tag.get("type") or "").strip().lower() == "application/ld+json"]
+
+
+def without_script_blocks(html: str) -> str:
+    """The page with every JSON-LD block removed, for scans of what the page itself shows.
+
+    Same pattern as script_blocks(), so the two always agree on what a block is.
+    """
+    return _SCRIPT_BLOCK_RE.sub(" ", html or "")
 
 
 def type_names(value) -> List[str]:
@@ -79,12 +98,37 @@ def nodes(data) -> list:
     A block may hold a single object or a top-level array of objects. Calling
     `.get()` straight on the array form raises `AttributeError` and kills the
     parse for the whole page.
+
+    An `@graph` container is expanded into its members: Yoast, Rank Math and
+    most WordPress SEO plugins emit one block of the form
+    `{"@context": ..., "@graph": [Organization, WebPage, Article, ...]}`, and
+    treating the wrapper as the node yields a single typeless "Unknown" entry
+    with every real type hidden behind it. The wrapper itself is kept (minus
+    its `@graph`) only when it declares an `@type` of its own. Members inherit
+    the wrapper's `@context` when they have none, so a has-context check does
+    not fail on every graph member.
     """
-    if isinstance(data, dict):
-        return [data]
     if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
-    return []
+        out = []
+        for item in data:
+            out.extend(nodes(item) if isinstance(item, dict) else [])
+        return out
+    if not isinstance(data, dict):
+        return []
+    graph = data.get("@graph")
+    if not isinstance(graph, list):
+        return [data]
+    out = []
+    if data.get("@type"):
+        out.append({k: v for k, v in data.items() if k != "@graph"})
+    context = data.get("@context")
+    for member in graph:
+        if not isinstance(member, dict):
+            continue
+        if context and "@context" not in member:
+            member = {"@context": context, **member}
+        out.extend(nodes(member))
+    return out
 
 
 def declares_type(html: str, wanted: str) -> bool:

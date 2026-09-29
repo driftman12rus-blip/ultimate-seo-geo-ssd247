@@ -32,6 +32,9 @@ chatgpt/knowledge/
 gsc-oauth-token.json
 gsc-client-secrets.json
 
+# GA4 local OAuth token (scripts/ga4_report.py reads it from the repo root)
+ga4-oauth-token.json
+
 # Google service-account keys. scripts/gsc_query.py and gsc_export.py accept
 # GOOGLE_APPLICATION_CREDENTIALS pointing at an arbitrary path, and the common
 # habit is to drop the key in the repo root. These are long-lived credentials

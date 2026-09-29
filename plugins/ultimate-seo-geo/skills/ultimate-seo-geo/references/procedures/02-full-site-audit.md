@@ -218,10 +218,10 @@ When implementing a specific fix:
 
 **Example:**
 ```
-Addressing: Missing FAQPage schema on /guides/psilocybin-therapy
-Fix: [generated JSON-LD below]
-Verify: python scripts/validate_schema.py therapy_page.html → 0 errors
-Confirmed: FAQPage with 4 Q&A pairs valid; eligible for AI Overview extraction.
+Addressing: Organization schema on / has no sameAs links (entity not tied to its profiles)
+Fix: [Organization JSON-LD below, sameAs → LinkedIn, Wikidata, Crunchbase]
+Verify: python scripts/validate_schema.py home.html → 0 errors
+Confirmed: Organization valid with 3 sameAs URLs, each resolving to the brand's own profile.
 ```
 
 ---

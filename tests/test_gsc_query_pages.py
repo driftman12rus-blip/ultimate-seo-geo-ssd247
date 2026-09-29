@@ -121,8 +121,8 @@ def test_top_pages_ranks_by_merged_impressions(monkeypatch, capsys):
                             ["sc-domain:improvado.io", "--top-pages", "1"])
     assert [r["page"] for r in out["rows"]] == [POST]
     assert out["rows"][0]["impressions"] == 201_000
-    # the fetch asks for --limit rows, not N, so anchor rows below the top N are still read
-    assert service.bodies[0]["rowLimit"] == 1000
+    # the fetch reads every row (API max per request), not N, so anchor rows below the top N are still read
+    assert service.bodies[0]["rowLimit"] == gq.API_MAX_ROWS
     assert out["property_type"] == "domain"
     assert out["page_normalization"] == {"applied": True, "rows_in": 5, "rows_out": 2, "merged_rows": 3}
     assert any("upper bound" in note for note in out["limits"])
@@ -143,7 +143,8 @@ def test_query_dimension_is_unchanged(monkeypatch, capsys):
                             ["sc-domain:improvado.io", "--top-queries", "2"])
     assert [r["query"] for r in out["rows"]] == ["ad fraud", "click fraud"]
     assert out["page_normalization"] == {"applied": False}
-    assert service.bodies[0]["rowLimit"] == 2
+    # not rowLimit=2: the API orders by clicks, so the top 2 by impressions need every row
+    assert service.bodies[0]["rowLimit"] == gq.API_MAX_ROWS
 
 
 def test_truncated_flag_when_the_row_limit_is_reached(monkeypatch, capsys):

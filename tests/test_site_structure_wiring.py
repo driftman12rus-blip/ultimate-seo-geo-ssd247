@@ -105,7 +105,9 @@ def test_structure_findings_reach_the_summary_unweighted_and_the_score_does_not_
     assert by_section["page_types"]["tags"] == ["opportunity"]
     assert by_section["page_types"]["severity"] == "medium" and by_section["page_types"]["level"] == "warning"
     assert by_section["page_types"]["confidence"] == "Likely" and by_section["page_types"]["evidence"].startswith("0 of 120")
-    assert by_section["navigation"]["severity"] == "high"
+    # The script says high; a check with no weight must not reach the critical level (CI gate).
+    assert by_section["navigation"]["severity"] == "medium" and by_section["navigation"]["level"] == "warning"
+    assert by_section["navigation"]["severity_capped_from"] == "high"
     for key in STRUCTURE:
         assert key not in s1["categories"] or s1["categories"][key]["weight"] is None
 

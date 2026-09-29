@@ -35,7 +35,7 @@ except ImportError:
 
 
 def analyze_html(html: str, page_url: str) -> dict:
-    soup = BeautifulSoup(html, "lxml" if "lxml" in sys.modules else "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
 
     title_el = soup.find("title")
     title = (title_el.get_text() if title_el else "") or ""

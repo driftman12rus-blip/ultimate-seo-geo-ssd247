@@ -1,5 +1,147 @@
 # Changelog
 
+## [1.21.1] - 2026-09-28
+
+The report stops raising false Critical and High findings that a live run on posthog.com and
+smashingmagazine.com exposed, and every finding a person must act on now says what to do. The
+shared site crawl checks every redirect hop and reads the sitemaps robots.txt declares. The rest
+of the 2026-09-28 full review is fixed too: Search Console and CrUX scripts that crashed or
+miscounted on real data, a GA4 sign-in path that did not exist, JSON-LD in `@graph` read as one
+"Unknown" node, and docs that contradicted the skill's own stance. Patch per D-020.
+
+### Security
+- **`site_graph.py` followed redirects into private networks.** `fetch_url` validated the first
+  URL, then let requests follow redirects unchecked, so a public page, sitemap `<loc>` or crawled
+  link that redirected to `169.254.169.254` (cloud metadata), loopback or an RFC 1918 host was
+  fetched, and its title, H1 and links went into `site_graph.json` and the report. The same
+  validate-then-follow gap was in `page_network.py --llms-txt` (`requests.get` follows by default)
+  and `link_profile.py` (`urlopen` follows on its own). All three now follow redirects one hop at a
+  time, validating each (at most 10), as `fetch_page.py` and `crawl_adapter.py` already did:
+  `site_graph` and `page_network` through a shared `url_safety.get_validated()`, `link_profile`
+  through a validating urllib redirect handler. Checked live: an httpbin redirect to the metadata
+  address is refused by all three before any request is sent.
+- **A malformed port crashed the fetch instead of being refused.** `url_safety.validate_url`
+  raised `ValueError` on `http://host:99999/` or `:abc`, so a hostile `Location` header aborted
+  `fetch_page` (and with it a `generate_report.py` run). It now returns "invalid port".
+
+- **Public IPv6 literals were refused and CGNAT addresses were not.** `url_safety.normalize_url`
+  dropped the brackets from `http://[2606:4700::1111]/`, so every IPv6 literal failed validation;
+  `100.64.0.0/10` (RFC 6598) was not blocked; an IPv4-mapped IPv6 address is now judged as its IPv4
+  form.
+- **`ga4-oauth-token.json` was not gitignored**, although `ga4_report.py` reads it from the repo
+  root by default and the Search Console token beside it was.
+
+### Fixed
+- **Sitemaps declared in robots.txt were never read.** robots.txt is served as `text/plain`, and
+  `site_graph.fetch_url` kept bodies only for HTML and XML, so its `Sitemap:` lines were dropped
+  and discovery fell back to four guessed paths. bbc.com read as a *complete* sitemap of 5 URLs
+  (its `/sitemap.xml`) while robots.txt declares dozens of sitemaps, and every absence claim gated
+  on a complete sitemap was made against those 5. robots.txt is now read; a crawled page served as
+  `text/plain` is still not a page. A sitemap robots.txt declares that fails to load, or loads but
+  is not XML, is now a stated reason and marks discovery incomplete; it used to vanish.
+- **Every page with labelled SVG icons got a Critical "Multiple `<title>` tags".** `parse_html.py`
+  counted the `<title>` inside inline SVG (and MathML), which names the icon for screen readers.
+  Both sites have one document title and were flagged. Only titles outside `<svg>`/`<math>` count
+  now, and an icon's label is never read as the page title.
+- **A SaaS company was told (High) to add LocalBusiness schema.** `local_signals_checker.py` read
+  its address and map signals from the whole HTML, JSON-LD included, so posthog.com's
+  `Organization.address` (its head office) counted as a local business. Address and map signals
+  are now read outside JSON-LD (`jsonld.without_script_blocks()`, the same pattern as
+  `script_blocks()`); a LocalBusiness block and a visible address with a phone link still count.
+- **A display-only check could fail a CI gate.** `navigation_checker.py` emits High, which is the
+  report's critical level, although navigation carries no score. Findings from `page_types`,
+  `navigation`, `architecture` and `search_performance` are now capped at medium in the report
+  and summary JSON; the new `severity_capped_from` field keeps what the script said.
+- **The PageSpeed panel showed "—" for LCP, INP and CLS even when measured.** It read
+  `field_data` / `lab_data`, keys `pagespeed.py` never writes; it reads `metrics` now, in the HTML
+  and the XLSX ("2,340 ms (fast, field)"). The CrUX CLS percentile, which the API sends ×100, is
+  divided by 100 (it printed "5 (target: <0.1)").
+- **Findings with no fix and no evidence.** `security_headers.py`, `broken_links.py` and
+  `internal_links.py` raised bare strings, which reach the report with neither: a Critical
+  "5 security headers missing" named none of them. All three emit structured findings with the
+  affected URLs or headers and a fix. Missing hardening headers on an HTTPS site are medium (the
+  middle tier of `references/technical-checklist.md`); no HTTPS stays critical. A page with no
+  links in its HTML is an open question pointing at `--render always`, not a defect. An
+  unreadable HSTS `max-age` is reported instead of silently skipped. Finding codes are those
+  earlier runs recorded, so `--previous` still matches, and these three checks score as before.
+  The overall score moves only where local signals no longer apply (a non-local site's local
+  check is now left out, as it always was for sites with no address at all).
+- **Search Console, CrUX and GA4 scripts on real data.**
+  - `crux_history.py` crashed on every real response: the CrUX History API returns plain numbers
+    (and `"NaN"` for missing periods) in `densities`, not objects. Missing periods are now `None`,
+    printed "n/a (no data)", never 0. The script had no tests.
+  - `gsc_insights.py` raised `TypeError` when the previous window had no rows or every current
+    query was machine traffic, which took out `--all` and `generate_report.py --gsc-property`. When
+    human position worsened while blended improved it printed "132% of the apparent gain is a
+    change in who searches"; the share is now stated only between 0 and 100%, else said in words.
+    The previous window now sets spike-topic queries aside too, so both windows compare one basis.
+  - `gsc_query.py --days 28` and `ga4_report.py --days 28` fetched 29 days; they now match
+    `gsc_insights.py`. `--top-queries N` / `--top-pages N` asked the API for N rows (ranked by
+    clicks) and then sorted those by impressions; they now page through every row (up to 100,000)
+    before ranking, and say when the cap cut it.
+  - `index_coverage_diff.py` summed "Indexed, though blocked by robots.txt" (indexed pages) into
+    "Blocked by robots.txt", and left "Blocked due to other 4xx issue" unclassified. Current
+    Search Console wordings now map to their reasons; the first is its own "expected" bucket.
+  - `conversion_reconcile.py` rejected a GA4 UI export ("need a month/date column"): the blank line
+    after its `#` comment block became the header. `gsc_ai_import.py` read "1.234" as 1 and turned
+    unreadable impressions into 0; locale formats now parse and unreadable cells are counted and
+    left out. `gsc_export.py` swallowed sitemap fetch errors and ended "No URLs to inspect".
+- **GA4 had no working sign-in.** `google_auth.py login` asks only for Search Console access, and
+  `ga4_report.py` / `ga4_audit.py` needed a service account or a hand-made token. `login --ga4`
+  (opt-in; plain `login` is unchanged) also grants read-only Analytics, GA4 scripts fall back to
+  that saved login, a Search-Console-only login asked for GA4 says to run `login --ga4`, and a
+  refresh keeps every scope the token holds. `google-analytics-data` joins `requirements-gsc.txt`
+  and `google_auth.py setup`. `google_api_tier.py` no longer tells users to create credentials in
+  Google Cloud.
+- **JSON-LD in `@graph` and odd-case `type` attributes.** `jsonld.nodes()` expands `@graph`, so a
+  Yoast or Rank Math page lists its real types (yoast.com: WebPage, ImageObject, BreadcrumbList,
+  WebSite, Organization) instead of one "Unknown" node, and retired-type, FAQ-parity and
+  preferred-sources checks see them. Every JSON-LD reader now matches `type="application/LD+json"`
+  and padded values: `parse_html.py` through `jsonld.script_blocks()`, and `article_seo.py`,
+  `entity_checker.py`, `ecommerce_schema.py`, `maps_checker.py`, `drift_monitor.py` through the
+  new `jsonld.soup_blocks()`.
+- **Pages the audit cannot read no longer score.** A JavaScript shell with under 50 words of text
+  used to score readability 0 at weight 8; it is now "not measured" and drops out of the Health
+  Score. A homepage answering 4xx/5xx no longer has its error page audited: the seven page-level
+  checks are unmeasured with the status as the reason, and no "Missing H1" is raised for it.
+  `fetch_page.py` reads a page with no charset header as UTF-8 (or its `<meta charset>`), not
+  ISO-8859-1, so non-ASCII titles and their lengths are right.
+- **Smaller defects from the review.**
+  - `redirect_checker.py --graph` walked with HEAD, so a server answering HEAD with 403/404/405/501
+    put every URL in "redirects to an error page"; such a hop is now retried with GET.
+  - `page_network.py` called an endpoint open to write calls when a CDN added
+    `Access-Control-Allow-Origin: *` to a 404 or 405; the preflight must now succeed and allow
+    the method.
+  - `finding_verifier.py` merged findings keyed `title`/`issue` into one and crashed on
+    `generate_report.py --json` output; it now keys on the first present of
+    finding/title/issue/observation plus section/url, and accepts either shape.
+  - `report_data_lint.py` checked absence claims ("N orphan pages", "no hub") only on
+    opportunities; defects must now show a complete inventory too.
+  - `parse_html.py`, `image_checker.py` and `meta_lengths_checker.py` lose a dead lxml branch that
+    could never be taken; `parse_html.py` reads a non-UTF-8 saved page instead of crashing.
+- **`programmatic_seo` scored differently on every run of the same site.** Page links were
+  deduplicated through a `set`, whose order Python randomises per process, so the capped crawl
+  sampled different pages each time: posthog.com scored 27, 43, 43 and 0 on four runs, moving the
+  Health Score about 2 points by chance. Links now keep page order. Found in this release's live
+  verification runs.
+
+### Documentation
+- `extensions/dataforseo/README.md` verified with `backlink_analyzer.py --source dataforseo`, a
+  value the script rejects; it now shows the MCP → CSV → `--source csv` route.
+  `tests/test_documented_commands.py` now also checks `agents/`, `extensions/`, `chatgpt/`,
+  `README.md` and `GEMINI.md`.
+- Script counts disagreed across ten files (24, 27, 35, 45, 54, 56). The manifests say 65, the
+  number in `references/audit-script-matrix.md`, and the prose drops the number; procedure ranges
+  say §1–§26 everywhere (some said §1–§21 or §1–§25). A test derives both from the repo.
+- The full-audit worked example treated "Missing FAQPage schema" as a finding, and the competitor
+  procedure called llms.txt "clearer indexing signal"; both now follow the skill's stance (D-016;
+  Google ignores llms.txt), as does eval 12's expected text. `industry-templates.md` points to the
+  FAQ rich-result retirement.
+- `robots_checker.py` gains `cohere-ai` (training), the one crawler the GEO reference listed and the
+  script did not; scoring is unchanged (only search-role crawlers score). A test now checks the
+  reference table against the script in both directions.
+- `generate_report.py --accent` help said the default was teal; it is blue `#0057B7`.
+
 ## [1.21.0] - 2026-09-27
 
 Search data and the site's crawl now say what to fix. It covers Search Console, GA4 and the

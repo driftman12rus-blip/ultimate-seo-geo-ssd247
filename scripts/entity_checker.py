@@ -74,9 +74,9 @@ ENTITY_TYPES = (
 def extract_entities_from_schema(soup: BeautifulSoup) -> list:
     """Extract Organization/Person entities and their sameAs from JSON-LD."""
     entities = []
-    for script in soup.find_all("script", type="application/ld+json"):
+    for raw in jsonld.soup_blocks(soup):
         try:
-            data = json.loads(script.string or "")
+            data = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             continue
 

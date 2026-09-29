@@ -482,7 +482,13 @@ def human_basis(rows: list, labels: dict, previous_rows=None, previous_labels=No
               "human": _change(previous["human"], current["human"])}
     bp, hp = change["blended"]["position"], change["human"]["position"]
     if bp and hp is not None and bp < 0:
-        change["position_gain_from_non_human"] = round(max(0.0, (bp - hp) / bp), 3)
+        if hp > 0:
+            # Human position worsened while blended improved: the whole apparent gain is non-human, and a
+            # ratio would read above 100%. Say so instead of quoting a share.
+            change["position_gain_from_non_human"] = 1.0
+            change["human_position_worsened"] = True
+        else:
+            change["position_gain_from_non_human"] = round(min(1.0, max(0.0, (bp - hp) / bp)), 3)
     out.update(previous=previous, change=change)
     return out
 
@@ -790,6 +796,20 @@ def _examples(items: list, fmt, n: int = 3) -> str:
     return "; ".join(fmt(i) for i in items[:n])
 
 
+def _signed(value) -> str:
+    """A position change as +0.00, or n/a when a window had no rows to compare."""
+    return f"{value:+.2f}" if value is not None else "n/a"
+
+
+def _pct(value) -> str:
+    """A CTR as 0.000%, or n/a when the basis has no impressions (e.g. every query is machine)."""
+    return f"{value:.3%}" if value is not None else "n/a"
+
+
+def _or_na(value) -> str:
+    return str(value) if value is not None else "n/a"
+
+
 def build_issues(results: dict, window_text: str) -> list:
     """One finding per analysis that found something, in the repo's finding shape."""
     issues = []
@@ -866,16 +886,23 @@ def build_issues(results: dict, window_text: str) -> list:
         change = hb.get("change") or {}
         trend = ""
         if "blended" in change:
-            trend = (f" Position moved {change['blended']['position']:+.2f} blended but {change['human']['position']:+.2f} "
-                     f"on human queries: {gain:.0%} of the apparent gain is a change in who searches, not in rankings.")
+            trend = (f" Position moved {_signed(change['blended']['position'])} blended but "
+                     f"{_signed(change['human']['position'])} on human queries")
+            if change.get("human_position_worsened"):
+                trend += (": human position worsened while blended improved, so the whole apparent gain is a change "
+                          "in who searches, not in rankings.")
+            elif "position_gain_from_non_human" in change:
+                trend += f": {gain:.0%} of the apparent gain is a change in who searches, not in rankings."
+            else:
+                trend += "."
         issues.append({
             "code": "non_human_queries", "severity": "medium", "kind": "defect", "lane": "Decision",
             "finding": (f"{share:.0%} of Search Console impressions come from machine or agent-like queries "
                         f"({window_text}); site-level position, CTR and impressions overstate what people see.{trend}"),
             "evidence": ("Largest: " + _examples(hb["items"], lambda i: (
                 f"'{i['query']}' {i['impressions']:,} impressions, {i['clicks']} clicks at {i['position']} ({', '.join(i['reasons'])})"))
-                + f". Blended position {cur['blended']['position']}, human {cur['human']['position']}; "
-                  f"blended CTR {cur['blended']['ctr']:.3%}, human {cur['human']['ctr']:.3%}."),
+                + f". Blended position {_or_na(cur['blended']['position'])}, human {_or_na(cur['human']['position'])}; "
+                  f"blended CTR {_pct(cur['blended']['ctr'])}, human {_pct(cur['human']['ctr'])}."),
             "impact": ("Every site-level Search Console trend quoted from the blended numbers is off by the machine share; "
                        "a ranking 'gain' can be a rank tracker or scraper fleet arriving, and CTR can fall while people click as before."),
             "fix": ("Quote Search Console trends on the human basis (human_basis.current.human) and name the basis with the number. "
@@ -950,6 +977,7 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
     labels = classify_queries(all_rows)
     prev_block = dataset.get("query_page_previous")
     prev_rows = _merge_query_page(_rows(prev_block)) if prev_block is not None else None
+    prev_labels = classify_queries(prev_rows) if prev_rows is not None else None
     results = {}
     if prev_rows is not None and {"topic_spikes", "human_basis"} & set(selected):
         spikes = topic_spikes(all_rows, prev_rows, labels, limit=limit)
@@ -959,6 +987,9 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
                 for q in item["_members"]:
                     if labels[q]["label"] == "human":
                         labels[q] = dict(labels[q], label="machine", reasons=["spike_topic"])
+                    # Same set aside in the previous window, or the human basis compares different query sets.
+                    if q in prev_labels and prev_labels[q]["label"] == "human":
+                        prev_labels[q] = dict(prev_labels[q], label="machine", reasons=["spike_topic"])
         for item in spikes["items"]:
             item.pop("_members", None)
         if "topic_spikes" in selected:
@@ -968,7 +999,7 @@ def analyse(dataset: dict, selected: set, pairs=None, opts=None) -> dict:
     rows = all_rows if opts.get("include_machine") else human_rows(all_rows, labels)
     curve = ctr_curve(rows)
     if "human_basis" in selected:
-        results["human_basis"] = human_basis(all_rows, labels, prev_rows, limit=limit)
+        results["human_basis"] = human_basis(all_rows, labels, prev_rows, prev_labels, limit=limit)
     if "striking_distance" in selected:
         results["striking_distance"] = striking_distance(
             rows, curve, min_impressions=opts.get("min_impressions", STRIKING_MIN_IMPRESSIONS), limit=limit)
@@ -1075,8 +1106,14 @@ def print_human(result: dict) -> None:
             print(f"  {name:<10} {b['impressions']:>11,} impr {b['clicks']:>8,} clicks  CTR {ctr:>8}  pos {b['position'] if b['position'] is not None else '-'}")
         change = hb.get("change") or {}
         if "blended" in change:
-            print(f"  vs previous window: position {change['blended']['position']:+.2f} blended, {change['human']['position']:+.2f} human"
-                  + (f"  ({change['position_gain_from_non_human']:.0%} of the gain is non-human)" if "position_gain_from_non_human" in change else ""))
+            if change.get("human_position_worsened"):
+                note = "  (human position worsened while blended improved: the whole gain is non-human)"
+            elif "position_gain_from_non_human" in change:
+                note = f"  ({change['position_gain_from_non_human']:.0%} of the gain is non-human)"
+            else:
+                note = ""
+            print(f"  vs previous window: position {_signed(change['blended']['position'])} blended, "
+                  f"{_signed(change['human']['position'])} human" + note)
         elif change:
             print(f"  change: {change['status']} ({change['reason']})")
         for i in hb["items"][:15]:

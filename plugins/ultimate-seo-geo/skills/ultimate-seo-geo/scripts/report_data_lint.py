@@ -170,7 +170,9 @@ class Linter:
             if f.get("evidence_status") == "weighted" and not f.get("machine_source"):
                 self.warn("weighted-without-source", where, '"weighted" evidence should name its machine_source')
             text = " ".join(str(f.get(k, "")) for k in ("title", "observation", "evidence"))
-            if kind == "opportunity" and STRUCTURE_WORDS.search(text) and ABSENCE.search(text) and complete is False:
+            # Every kind, not only opportunities: a defect reading "14 orphan pages" or
+            # "no hub" is the same absence claim, and just as wrong from a partial crawl.
+            if STRUCTURE_WORDS.search(text) and ABSENCE.search(text) and complete is False:
                 self.error("absence-claim", where, "an absence claim about site structure needs a complete "
                                                    "sitemap or crawl (coverage.graph says the inventory is incomplete)")
             if f.get("evidence_status") == "not_measured" and (CWV_NUMBER.search(text) or BACKLINK_NUMBER.search(text)):

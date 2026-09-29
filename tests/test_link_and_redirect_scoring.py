@@ -75,7 +75,7 @@ def test_internal_links_summarises_each_page_list_in_exactly_one_issue(monkeypat
     assert len(result["broken_internal_pages"]) == 2 and len(result["server_error_pages"]) == 1
     for key in gr.INTERNAL_LINK_PAGE_PENALTY:
         if result.get(key):
-            summaries = [i for i in result["issues"] if f"{len(result[key])} internal" in i]
+            summaries = [i for i in result["issues"] if f"{len(result[key])} internal" in i["finding"]]
             assert len(summaries) == 1, (key, result["issues"])
     # 2 broken + 1 server error at 15 each, plus whatever other problems the crawl raised.
     other = len(result["issues"]) - 2
@@ -170,7 +170,7 @@ def test_a_login_page_or_a_throttled_crawl_is_not_a_broken_page(monkeypatch):
 
 def test_refused_pages_are_one_open_question_that_costs_nothing(monkeypatch):
     refused = _crawl(monkeypatch, {"/account": 401, "/busy": 429})
-    [gap] = [i for i in refused["issues"] if isinstance(i, dict)]
+    [gap] = [i for i in refused["issues"] if i.get("kind") == "data_gap"]
     assert gap["kind"] == "data_gap" and gap["severity"] == "info" and "browser" in gap["fix"]
     assert "/account -> HTTP 401" in gap["evidence"] and "/busy -> HTTP 429" in gap["evidence"]
     assert not refused["broken_internal_pages"]

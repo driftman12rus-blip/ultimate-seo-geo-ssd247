@@ -11,8 +11,8 @@ from __future__ import annotations
 import ipaddress
 import socket
 from dataclasses import dataclass, field
-from typing import Iterable
-from urllib.parse import urlparse, urlunparse
+from typing import Callable, Iterable
+from urllib.parse import urljoin, urlparse, urlunparse
 
 
 ALLOWED_SCHEMES = {"http", "https"}
@@ -48,9 +48,16 @@ def normalize_url(url: str) -> str:
         # validate_url will return a clear failure for the original hostname.
         host = parsed.hostname.rstrip(".").lower()
 
-    netloc = host
-    if parsed.port is not None:
-        netloc = f"{host}:{parsed.port}"
+    try:
+        port = parsed.port
+    except ValueError:
+        # "http://x:99999/" or "http://x:abc/": left as given for validate_url to refuse.
+        return value
+    # urlparse strips the brackets from an IPv6 literal; without them
+    # "2606:4700::1111" reads as a host plus port and the URL is refused.
+    netloc = f"[{host}]" if ":" in host else host
+    if port is not None:
+        netloc = f"{netloc}:{port}"
     if parsed.username:
         userinfo = parsed.username
         if parsed.password:
@@ -126,7 +133,18 @@ def _host_literal_ip(host: str) -> ipaddress._BaseAddress | None:
         return None
 
 
+# Carrier-grade NAT shared space (RFC 6598). Not public, and ipaddress reports
+# it as neither private nor global, so the flags below let it through.
+_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
 def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
+    # ::ffff:127.0.0.1 is 127.0.0.1; judge an IPv4-mapped address as its IPv4 self.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
+    if ip.version == 4 and ip in _CGNAT:
+        return True
     return any(
         (
             ip.is_private,
@@ -165,6 +183,12 @@ def validate_url(url: str, *, resolve_dns: bool = True) -> UrlSafetyResult:
         return UrlSafetyResult(False, url, normalized, "missing hostname")
     if parsed.username or parsed.password:
         return UrlSafetyResult(False, url, normalized, "URL credentials are not allowed")
+    try:
+        parsed.port
+    except ValueError:
+        # Refuse, never raise: a redirect's Location header is remote input, and an
+        # exception here used to abort the whole fetch (or a whole report run).
+        return UrlSafetyResult(False, url, normalized, "invalid port")
 
     hostname = parsed.hostname.rstrip(".").lower()
     try:
@@ -195,6 +219,32 @@ def validate_url(url: str, *, resolve_dns: bool = True) -> UrlSafetyResult:
 
     ok, resolved, reason = _validate_resolved_ips(ips)
     return UrlSafetyResult(ok, url, normalized, reason, hostname, resolved)
+
+
+MAX_REDIRECTS = 10
+
+
+def get_validated(get: Callable, url: str, max_redirects: int = MAX_REDIRECTS):
+    """Fetch url, following redirects one validated hop at a time: (response, None) or (None, error).
+
+    `get(url)` must make a single request WITHOUT following redirects (for requests:
+    `lambda u: requests.get(u, allow_redirects=False, ...)`), and return an object
+    with .url, .headers and .is_redirect. Validating only the first URL and letting
+    the client follow redirects checks nothing: a public page that 302s to
+    169.254.169.254 is then fetched. Network errors from `get` propagate.
+    """
+    current = url
+    for hop in range(max_redirects + 1):
+        safe = validate_url(current)
+        if not safe.ok:
+            where = "" if hop == 0 else f" (redirect {hop} to {current[:120]})"
+            return None, f"URL safety check failed: {safe.reason}{where}"
+        response = get(safe.normalized_url)
+        location = response.headers.get("Location")
+        if not (response.is_redirect and location):
+            return response, None
+        current = urljoin(response.url, location)
+    return None, f"too many redirects (over {max_redirects})"
 
 
 def validate_redirect_chain(urls: Iterable[str]) -> UrlSafetyResult:

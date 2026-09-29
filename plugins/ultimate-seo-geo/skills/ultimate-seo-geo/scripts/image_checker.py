@@ -42,7 +42,7 @@ def _src_extension(src: str) -> str:
 
 
 def analyze_html(html: str, base_url: str) -> dict:
-    soup = BeautifulSoup(html, "lxml" if "lxml" in sys.modules else "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
     imgs = soup.find_all("img")
     total = len(imgs)
     issues = []

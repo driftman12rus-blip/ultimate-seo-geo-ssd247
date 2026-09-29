@@ -77,20 +77,54 @@ def run_script(script_name: str, args: list, timeout: int = 120) -> dict:
         return {"error": str(e)}
 
 
+# Checks that read the fetched page itself. On a 4xx/5xx response they would
+# audit the error page — its title, its schema, its prose — and score the site
+# on it, so they are marked unmeasured with the status instead.
+PAGE_LEVEL_CHECKS = (
+    "onpage", "readability", "article", "schema_validation", "image_seo",
+    "hidden_instructions", "citability",
+)
+
+
+# Why fetch_page returned no page for a URL, read (and cleared) by collect_data.
+# A side table rather than a third return value keeps fetch_page's
+# (path, warning) contract, which callers and tests stub.
+PAGE_FETCH_ERRORS: dict[str, str] = {}
+
+
+def fetch_page_checked(url: str, render: str = "never") -> tuple[str, str, str]:
+    """Fetch page HTML to a temp file. Returns (path, render_warning, page_error).
+
+    page_error is set, and path is "", when the page answered 4xx/5xx: the
+    body is an error page, not the page being audited.
+    """
+    fetched = fetch_url(url, timeout=20, render=render)
+    warning = render_fallback_warning(fetched["render_error"]) if fetched.get("render_error") else ""
+    status = fetched.get("status_code")
+    if not fetched.get("error") and isinstance(status, int) and status >= 400:
+        return "", warning, (
+            f"Not measured: {url} answered HTTP {status}, so the page-level checks would have "
+            "audited the error page. Fix the status (or audit the URL that serves the page) and re-run."
+        )
+    if fetched.get("error") or not fetched.get("content"):
+        return "", warning, ""
+    tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
+    tmp.write(fetched["content"])
+    tmp.close()
+    return tmp.name, warning, ""
+
+
 def fetch_page(url: str, render: str = "never") -> tuple[str, str]:
     """Fetch page HTML to a temp file. Returns (path, render_warning).
 
     With render="auto" a failed render still returns the static HTML, and
-    render_warning says so; the page-level checks run on that content.
+    render_warning says so; the page-level checks run on that content. A
+    4xx/5xx page returns no path (see fetch_page_checked).
     """
-    fetched = fetch_url(url, timeout=20, render=render)
-    warning = render_fallback_warning(fetched["render_error"]) if fetched.get("render_error") else ""
-    if fetched.get("error") or not fetched.get("content"):
-        return "", warning
-    tmp = tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8")
-    tmp.write(fetched["content"])
-    tmp.close()
-    return tmp.name, warning
+    path, warning, page_error = fetch_page_checked(url, render=render)
+    if page_error:
+        PAGE_FETCH_ERRORS[url] = page_error
+    return path, warning
 
 
 def detect_environment(html_text: str, url: str) -> dict:
@@ -253,8 +287,11 @@ def build_environment_fixes(data: dict) -> list:
     title = (op.get("title") or "").strip()
     meta = (op.get("meta_description") or "").strip()
     h1s = op.get("h1", []) if isinstance(op.get("h1"), list) else []
+    # An on-page parse that did not run (fetch failed, or the page answered
+    # 4xx/5xx) says nothing about the H1, meta description or title.
+    onpage_measured = isinstance(op, dict) and bool(op) and not op.get("error")
 
-    if not h1s:
+    if onpage_measured and not h1s:
         add(
             "critical",
             "Missing H1 on page",
@@ -262,7 +299,7 @@ def build_environment_fixes(data: dict) -> list:
             _platform_hint(platform, "heading"),
         )
 
-    if not meta or len(meta) < 110 or len(meta) > 170:
+    if onpage_measured and (not meta or len(meta) < 110 or len(meta) > 170):
         add(
             "warning",
             "Meta description is missing or out of range",
@@ -270,7 +307,7 @@ def build_environment_fixes(data: dict) -> list:
             _platform_hint(platform, "metadata"),
         )
 
-    if not title or len(title) < 30 or len(title) > 65:
+    if onpage_measured and (not title or len(title) < 30 or len(title) > 65):
         add(
             "warning",
             "Title tag needs optimization",
@@ -281,7 +318,7 @@ def build_environment_fixes(data: dict) -> list:
     missing_headers = sec.get("headers_missing", {})
     if missing_headers:
         add(
-            "critical" if len(missing_headers) >= 4 else "warning",
+            "warning",  # HTTPS with headers missing is a middle tier; no HTTPS is the failing one
             f"{len(missing_headers)} security headers missing",
             "Missing headers reduce trust and can expose the site to browser/security risks.",
             _platform_hint(platform, "headers"),
@@ -496,7 +533,10 @@ def build_environment_fixes(data: dict) -> list:
             "Rerun `pagespeed.py` with `--api-key` and then prioritize LCP/INP/CLS fixes from that output.",
         )
 
-    if rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25:
+    # An unmeasured readability run (too little text in the raw HTML) says
+    # nothing about how hard the page is to read.
+    if not rd.get("error") and (
+            rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25):
         add(
             "warning",
             "Content readability is difficult",
@@ -729,7 +769,12 @@ def collect_data(
 
     # Fetch page for parse_html and readability
     print("  ⏳ Fetching page HTML...")
+    PAGE_FETCH_ERRORS.pop(url, None)
     html_path, render_warning = fetch_page(url, render=render)
+    page_error = PAGE_FETCH_ERRORS.pop(url, "")
+    if page_error:
+        print(f"  ⚠️  {page_error}")
+        data["page_fetch_error"] = page_error
     if render_warning:
         print(f"  ⚠️  {render_warning}")
         data["render_warning"] = render_warning
@@ -801,6 +846,10 @@ def collect_data(
         analyses.append(("onpage", "parse_html.py", [html_path, "--url", url]))
         analyses.append(("readability", "readability.py", [html_path]))
         analyses.append(("article", "article_seo.py", [url]))
+    elif page_error:
+        # Unmeasured, with the reason, rather than absent or scored on the error page.
+        for name in PAGE_LEVEL_CHECKS:
+            data["sections"][name] = {"error": page_error, "measured": False}
 
     # Merge HTML-file-based checks into the same parallel batch.
     # html_path is already written to disk at this point, so all tasks are
@@ -1341,6 +1390,7 @@ _UNMEASURED_HINTS = {
     "pagespeed": "Set PAGESPEED_API_KEY and re-run, or run `pagespeed.py` on its own; the public quota is rate-limited.",
     "link_profile": "Re-run `link_profile.py` with a larger crawl.",
     "duplicate_content": "Re-run `duplicate_content.py`; it needs at least two fetched pages.",
+    "readability": "Re-run with `--render auto`: the page HTML carries too little text to score, usually a JavaScript-rendered page.",
 }
 
 
@@ -1634,6 +1684,8 @@ def _summary_finding(issue: dict) -> dict:
     return {
         "id": issue["id"],
         "severity": issue["canonical_severity"],
+        # What the script said when a display-only check's severity was capped, else None.
+        "severity_capped_from": issue.get("severity_capped_from"),
         "level": issue["severity"],
         "section": issue["section"],
         "group": CHECK_GROUP.get(issue["section"]),
@@ -2047,6 +2099,28 @@ def render_all_recommendations(data: dict) -> str:
     return html
 
 
+def psi_metric_text(psi: dict, name: str) -> str:
+    """One Core Web Vital from pagespeed.py's "metrics" as "2,340 ms (good, field)", else "—".
+
+    pagespeed.py writes {"LCP": {"value", "unit", "rating", "source"}, ...}: field data
+    (CrUX) when Google has it, Lighthouse lab data otherwise. The panel used to read
+    "field_data"/"lab_data", keys the script never wrote, so every value showed "—".
+    """
+    entry = (psi.get("metrics") or {}).get(name)
+    if not isinstance(entry, dict) or entry.get("value") is None:
+        return "—"
+    value = entry["value"]
+    shown = f"{value:,}" if isinstance(value, int) else str(value)
+    unit = f" {entry['unit']}" if entry.get("unit") else ""
+    notes = ", ".join(x for x in (str(entry.get("rating") or "").replace("_", " "), entry.get("source") or "") if x)
+    return f"{shown}{unit}" + (f" ({notes})" if notes else "")
+
+
+# A display-only check is shown, never weighted, so it must not decide a CI gate either:
+# "high" is the report's critical level and would trip --fail-on critical on its own.
+DISPLAY_ONLY_MAX_SEVERITY = "medium"
+
+
 def _collect_issues(data: dict) -> list:
     issues = []
     for section_name, section_data in data["sections"].items():
@@ -2055,6 +2129,10 @@ def _collect_issues(data: dict) -> list:
         for issue in section_data.get("issues", []) or []:
             if isinstance(issue, dict):
                 canonical = _canonical_severity(issue.get("severity"))
+                capped_from = None
+                if (section_name in DISPLAY_ONLY_CHECKS
+                        and SEVERITY_SCALE.index(canonical) < SEVERITY_SCALE.index(DISPLAY_ONLY_MAX_SEVERITY)):
+                    capped_from, canonical = canonical, DISPLAY_ONLY_MAX_SEVERITY
                 finding = _plain(issue.get("finding", "")) or _plain(str(issue))
                 fix = str(issue.get("fix", "") or "")
                 issues.append({
@@ -2065,6 +2143,7 @@ def _collect_issues(data: dict) -> list:
                     "canonical_severity": canonical,
                     "section": section_name,
                     "source_issue": issue,
+                    **({"severity_capped_from": capped_from} if capped_from else {}),
                     **_recommendation_metadata(issue, section_name),
                 })
             elif isinstance(issue, str):
@@ -2376,7 +2455,6 @@ def _check_panels(data: dict) -> dict:
     )
 
     psi = get("pagespeed")
-    metrics = psi.get("field_data") or psi.get("lab_data") or {}
     psi_note = ""
     if psi.get("error") or not psi.get("performance_score"):
         detail = f" ({_esc(psi.get('error'))})" if psi.get("error") else ""
@@ -2389,9 +2467,9 @@ def _check_panels(data: dict) -> dict:
     panels["pagespeed"] = (
         psi_note
         + _kv([("Performance", _esc(psi.get("performance_score") or "—")),
-               ("LCP", _esc(metrics.get("LCP", "—"))),
-               ("INP or TBT", _esc(metrics.get("INP", metrics.get("TBT", "—")))),
-               ("CLS", _esc(metrics.get("CLS", "—")))])
+               ("LCP", _esc(psi_metric_text(psi, "LCP"))),
+               ("INP", _esc(psi_metric_text(psi, "INP"))),
+               ("CLS", _esc(psi_metric_text(psi, "CLS")))])
         + render_recommendations(psi)
     )
 
@@ -4038,9 +4116,9 @@ def export_xlsx(data: dict, scores: dict, output_path: str) -> str:
         row += 1
     psi = data["sections"].get("pagespeed", {})
     if psi and not psi.get("error"):
-        for metric in ["LCP", "INP", "CLS", "TBT", "FCP", "SI"]:
-            val = psi.get("field_data", psi.get("lab_data", {})).get(metric)
-            if val is not None:
+        for metric in ["LCP", "INP", "CLS", "FCP", "TTFB"]:
+            val = psi_metric_text(psi, metric)
+            if val != "—":
                 ws4.cell(row=row, column=1, value=f"CWV: {metric}").border = thin_border
                 ws4.cell(row=row, column=2, value="Measured").border = thin_border
                 ws4.cell(row=row, column=3, value=str(val)).border = thin_border
@@ -4165,7 +4243,7 @@ def main():
     )
     parser.add_argument("--prepared-for", metavar="NAME", help="Shown in the report masthead")
     parser.add_argument("--prepared-by", metavar="NAME", help="Shown in the report masthead (default: the skill)")
-    parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default teal")
+    parser.add_argument("--accent", metavar="#RRGGBB", help="Accent colour for the report (white-label); default blue #0057B7")
 
     args = parser.parse_args()
     if args.accent and not _ACCENT_RE.match(args.accent):

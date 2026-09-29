@@ -85,9 +85,9 @@ def _fetch(url: str) -> dict:
 def _extract_jsonld_blocks(soup: BeautifulSoup) -> list[dict]:
     """Extract all JSON-LD blocks from the page."""
     blocks: list[dict] = []
-    for tag in soup.find_all("script", type="application/ld+json"):
+    for raw in jsonld.soup_blocks(soup):
         try:
-            data = json.loads(tag.string or "")
+            data = json.loads(raw)
             if isinstance(data, list):
                 blocks.extend(data)
             elif isinstance(data, dict):

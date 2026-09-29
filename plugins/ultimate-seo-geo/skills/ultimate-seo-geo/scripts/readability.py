@@ -204,13 +204,42 @@ def is_navigation_noise(sentence: str) -> bool:
     return False
 
 
+# Below this many words a Flesch score says nothing about the page. The usual
+# cause is a JavaScript-rendered page whose raw HTML is an app shell: scoring
+# it Flesch 0 put an unmeasured check into the Health Score as a failure.
+MIN_WORDS_TO_MEASURE = 50
+
+
 def analyze_readability(text: str) -> dict:
     """
     Analyze text readability.
 
     Returns:
-        Dictionary with readability metrics and assessment
+        Dictionary with readability metrics and assessment. When the text has
+        fewer than MIN_WORDS_TO_MEASURE words the result carries
+        ``measured: False`` and an ``error`` giving the reason, so the report
+        drops the check from the Health Score instead of scoring it 0.
     """
+    result = _measure_readability(text)
+    words = result["word_count"]
+    if words < MIN_WORDS_TO_MEASURE:
+        reason = (
+            f"Readability not measured: only {words} word(s) of readable text in the page HTML "
+            f"(needs {MIN_WORDS_TO_MEASURE}). A JavaScript-rendered page ships its text after load; "
+            "re-run generate_report.py with --render auto to measure the rendered text."
+        )
+        result["measured"] = False
+        result["error"] = reason
+        # The difficulty notes were computed from too little text to mean anything.
+        result["issues"] = [f"ℹ️ {reason}"]
+        result["recommendations"] = []
+    else:
+        result["measured"] = True
+    return result
+
+
+def _measure_readability(text: str) -> dict:
+    """The raw readability metrics, however little text there is."""
     result = {
         "word_count": 0,
         "sentence_count": 0,

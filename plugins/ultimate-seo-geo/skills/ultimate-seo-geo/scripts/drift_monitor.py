@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
+import jsonld
 from fetch_page import fetch_page
 
 
@@ -75,7 +76,7 @@ def extract_snapshot(html: str, url: str, status_code: int | None = None) -> dic
     robots = soup.find("meta", attrs={"name": "robots"})
     h1s = [h.get_text(" ", strip=True) for h in soup.find_all("h1")]
     headings = [h.get_text(" ", strip=True) for h in soup.find_all(["h1", "h2", "h3"])]
-    schema_blocks = [tag.string or "" for tag in soup.find_all("script", attrs={"type": "application/ld+json"})]
+    schema_blocks = jsonld.soup_blocks(soup)
     internal_links = [
         a.get("href", "")
         for a in soup.find_all("a", href=True)

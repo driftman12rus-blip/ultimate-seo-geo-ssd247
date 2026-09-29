@@ -4,7 +4,7 @@ Live SERP data, keyword research, backlink profiles, on-page analysis, and AI vi
 
 ## What It Enables
 
-- `backlink_analyzer.py --source dataforseo` for live backlink data
+- Live backlink data: pull it through the MCP server, export to CSV, and feed it to `backlink_analyzer.py --source csv`
 - Live SERP analysis for any keyword
 - Keyword volume, difficulty, and intent classification
 - AI visibility checking (LLM mentions of your brand)
@@ -28,6 +28,8 @@ bash extensions/dataforseo/install-cursor.sh
 
 ## Verification
 
+`backlink_analyzer.py` has no live DataForSEO source (`--source` is `csv`, `gsc` or `sample`). Pull backlinks through the DataForSEO MCP server, save them as CSV (columns such as `source_url`, `anchor_text`, `domain_rating`), then run:
+
 ```bash
-python scripts/backlink_analyzer.py --source dataforseo --target-url https://example.com --json
+python scripts/backlink_analyzer.py --source csv --input dataforseo-backlinks.csv --target-url https://example.com --json
 ```

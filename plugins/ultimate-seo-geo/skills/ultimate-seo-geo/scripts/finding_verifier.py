@@ -30,8 +30,36 @@ def _normalize_text(text: str) -> str:
     return text
 
 
+# Findings arrive in more than one shape: generate_report's summary and the
+# audit template say "finding", render_report's source data says "title" (with
+# "observation" as the body), older script output says "issue". Keying on
+# "finding" alone collapsed every finding of the other shapes into one "" key.
+TEXT_FIELDS = ("finding", "title", "issue", "observation")
+
+
+def finding_text(finding: dict) -> str:
+    """The finding's headline, from the first text field it carries."""
+    for field in TEXT_FIELDS:
+        value = finding.get(field)
+        if isinstance(value, str) and value.strip():
+            return value
+    return ""
+
+
+def _scope(finding: dict) -> str:
+    """Section and URL, when given: the same words on two pages are two findings."""
+    parts = [_normalize_text(str(finding.get(f) or "")) for f in ("section", "url")]
+    return "|".join(parts) if any(parts) else ""
+
+
 def canonical_key(finding: dict) -> str:
-    text = _normalize_text(finding.get("finding", ""))
+    key = _canonical_text_key(finding)
+    scope = _scope(finding)
+    return f"{key}@{scope}" if scope else key
+
+
+def _canonical_text_key(finding: dict) -> str:
+    text = _normalize_text(finding_text(finding))
 
     m = re.search(r"missing required (?:repository )?(?:file|artifact):\s*([^\.\n]+)", text)
     if m:
@@ -55,7 +83,7 @@ def canonical_key(finding: dict) -> str:
 
 
 def should_suppress(finding: dict, context: dict) -> tuple:
-    text = _normalize_text(finding.get("finding", ""))
+    text = _normalize_text(finding_text(finding))
     metrics = (context or {}).get("readme_metrics", {}) or {}
 
     if "no code examples detected" in text:
@@ -96,7 +124,7 @@ def verify_findings(findings: list, context: dict = None) -> dict:
     for item in findings or []:
         suppress, reason = should_suppress(item, context=context)
         if suppress:
-            dropped.append({"finding": item.get("finding", ""), "reason": reason})
+            dropped.append({"finding": finding_text(item), "reason": reason})
             continue
 
         key = canonical_key(item)
@@ -109,8 +137,9 @@ def verify_findings(findings: list, context: dict = None) -> dict:
 
         # Merge duplicates and keep stronger severity.
         if _sev_rank(item.get("severity")) < _sev_rank(existing.get("severity")):
-            for field in ("severity", "finding", "evidence", "fix", "confidence"):
-                existing[field] = item.get(field, existing.get(field))
+            for field in ("severity", *TEXT_FIELDS, "evidence", "fix", "confidence"):
+                if field in item or field in existing:
+                    existing[field] = item.get(field, existing.get(field))
         src = item.get("source")
         if src and src not in existing.get("sources", []):
             existing.setdefault("sources", []).append(src)
@@ -126,6 +155,22 @@ def verify_findings(findings: list, context: dict = None) -> dict:
     }
 
 
+def load_findings(data) -> list:
+    """A findings list from either a bare JSON array or an object holding one.
+
+    generate_report's --json summary is an object with a "findings" list, and
+    AGENTS.md tells agents to run this verifier on it; iterating the object's
+    keys crashed on the first `.get()`.
+    """
+    if isinstance(data, dict):
+        data = data.get("findings")
+        if data is None:
+            raise ValueError('findings JSON object has no "findings" list')
+    if not isinstance(data, list):
+        raise ValueError("findings JSON must be a list or an object with a \"findings\" list")
+    return [item for item in data if isinstance(item, dict)]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Verify/dedupe findings from JSON input.")
     parser.add_argument("--findings-json", help="Path to JSON array of findings.")
@@ -138,7 +183,12 @@ def main():
         sys.exit(2)
 
     with open(args.findings_json, "r", encoding="utf-8") as f:
-        findings = json.load(f)
+        raw = json.load(f)
+    try:
+        findings = load_findings(raw)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
     context = {}
     if args.context_json:
         with open(args.context_json, "r", encoding="utf-8") as f:

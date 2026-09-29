@@ -20,6 +20,7 @@ import json
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, urljoin
@@ -65,6 +66,23 @@ def is_page_url(url: str) -> bool:
 # Fetch helpers
 # ---------------------------------------------------------------------------
 
+class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """urlopen follows redirects by itself; refuse any hop validate_url refuses.
+
+    Checking only the first URL checks nothing: a sitemap <loc> or page link that
+    302s to 169.254.169.254 or a private host would otherwise be read.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        safe = validate_url(newurl)
+        if not safe.ok:
+            raise urllib.error.URLError(f"URL safety check failed: {safe.reason} (redirect to {newurl[:120]})")
+        return super().redirect_request(req, fp, code, msg, headers, safe.normalized_url)
+
+
+_open = urllib.request.build_opener(_ValidatingRedirectHandler).open
+
+
 def fetch_page(url: str, timeout: int = 10) -> tuple:
     """Return (final_url, html) or (url, '').
 
@@ -81,7 +99,7 @@ def fetch_page(url: str, timeout: int = 10) -> tuple:
         req = urllib.request.Request(
             safe.normalized_url, headers={"User-Agent": USER_AGENT}
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with _open(req, timeout=timeout) as resp:
             return resp.url, resp.read().decode("utf-8", errors="ignore")
     except Exception:
         return url, ""

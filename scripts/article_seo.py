@@ -302,8 +302,7 @@ def extract_structured_data(soup: BeautifulSoup, page_text: str = "") -> list:
     Flags deprecated / restricted types.
     """
     blocks = []
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or ""
+    for raw in jsonld.soup_blocks(soup):
         try:
             data = json.loads(raw.strip())
         except json.JSONDecodeError:

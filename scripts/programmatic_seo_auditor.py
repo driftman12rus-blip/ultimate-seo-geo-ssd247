@@ -112,7 +112,10 @@ def _extract_meta(html: str, base_url: str) -> dict:
         "robots": robots,
         "body_text": body_text,
         "word_count": len(re.findall(r"\b\w+\b", body_text)),
-        "internal_links": list(set(links)),
+        # Deduplicated in page order: list(set(...)) reordered links on every run (string
+        # hashing is randomised per process), so the capped BFS sampled different pages and
+        # the same site scored 27, 43 and 0 on consecutive runs.
+        "internal_links": list(dict.fromkeys(links)),
     }
 
 

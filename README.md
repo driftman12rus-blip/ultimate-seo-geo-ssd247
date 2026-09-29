@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.21.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.21.1-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -220,7 +220,7 @@ ultimate-seo-geo/
 │   └── copy-knowledge-files.sh  Copies SKILL + references/ + references/procedures/
 │
 ├── references/            ← Domain knowledge + procedures (load on demand)
-│   ├── procedures/        ← Step-by-step §1–§25 (split from former monolithic SKILL.md)
+│   ├── procedures/        ← Step-by-step §1–§26 (split from former monolithic SKILL.md)
 │   │   ├── 22-drift-monitoring.md       SEO drift baseline/compare/history
 │   │   ├── 23-semantic-clustering.md    SERP-overlap topic clustering
 │   │   ├── 24-ecommerce-seo.md          E-commerce schema + faceted nav
@@ -235,7 +235,7 @@ ultimate-seo-geo/
 │   ├── entity-optimization.md  Entity / Knowledge Graph checklist
 │   ├── ...and 14 more topical files
 │
-├── scripts/               ← 56 bundled Python scripts
+├── scripts/               ← bundled Python scripts
 │   ├── generate_report.py    Full-site HTML/XLSX/PDF report (runs all scripts)
 │   ├── validate_schema.py    JSON-LD validation
 │   ├── robots_checker.py     AI crawler access check
@@ -278,7 +278,7 @@ When someone runs `/plugin marketplace add mykpono/ultimate-seo-geo`, the tool r
 
 ## Scripts
 
-**Bundled in the plugin:** **56** diagnostic scripts. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
+**Bundled in the plugin:** every diagnostic script in `references/audit-script-matrix.md`. **`check-plugin-sync.py`**, **`check_github_release.py`**, and **`check_version_sync.py`** are repo-only for CI and are not included in the bundle. Python 3.8+; install dependencies with:
 
 ```bash
 pip install -r requirements.txt

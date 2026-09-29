@@ -177,7 +177,8 @@ def load_ga4(path: str, channel: str | None = None) -> dict:
             raise ValueError(f"{path}: expected ga4_report.py JSON with 'rows'")
     else:
         with open(path, newline="", encoding="utf-8-sig") as fh:
-            lines = [line for line in fh if not line.startswith("#")]  # GA4 UI exports start with # comments
+            # GA4 UI exports start with # comment lines and a blank line before the header.
+            lines = [line for line in fh if line.strip() and not line.startswith("#")]
         rows = list(csv.DictReader(lines))
     for row in rows:
         # GA4 names columns "yearMonth" in the API and "Year month" in the UI export: compare without spaces.

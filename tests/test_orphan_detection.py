@@ -191,7 +191,7 @@ def test_internal_links_makes_no_orphan_claim(monkeypatch):
     result = internal_links.crawl_site(SITE, max_depth=2, max_pages=10)
 
     assert "orphan_candidates" not in result
-    assert not [i for i in result["issues"] if "orphan" in i.lower()]
+    assert not [i for i in result["issues"] if "orphan" in i["finding"].lower()]
     assert not [r for r in result["recommendations"] if "orphan" in r.lower()]
 
 

@@ -119,9 +119,27 @@ REASONS = {
                            "Redirects added (a migration or URL change). Old URLs leave the index as intended.",
                            "None for intended redirects; take redirected URLs out of the sitemap and update internal links (internal_links.py).",
                            ("redirect", "301", "migration", "migrate", "moved", "url change", "restructur")),
+    # Indexed, not an exclusion: robots.txt stops the crawl but Google indexed the URL from links anyway.
+    "indexed, though blocked by robots.txt": ("expected", "Indexed, but robots.txt stops Google from crawling it, so the result shows without a description.",
+                                              "New URLs under a disallowed path that other pages link to.",
+                                              "If the pages should rank, allow them in robots.txt; if they should not, allow crawling and add noindex (robots.txt alone never removes a URL).",
+                                              ("robots",)),
+}
+# Search Console's current wordings of reasons the table keys by an older name.
+_ALIASES = {
+    "blocked by robots.txt": "url blocked by robots.txt",
+    "submitted url blocked by robots.txt": "url blocked by robots.txt",
+    "blocked due to other 4xx issue": "url blocked due to other 4xx issue",
+    "submitted url blocked due to other 4xx issue": "url blocked due to other 4xx issue",
+    "excluded by 'noindex' tag": "url marked 'noindex'",
+    "submitted url marked 'noindex'": "url marked 'noindex'",
+    "duplicate, google chose different canonical than user": "duplicate, google chose different canonical",
+    "indexed, though blocked by robots.txt": "indexed, though blocked by robots.txt",
 }
 # Older or regional wordings, matched by substring when the exact name is unknown.
 _FALLBACK = (
+    # Specific wordings first: "indexed, though blocked by robots.txt" is indexed, not a robots.txt exclusion.
+    ("indexed, though blocked", "indexed, though blocked by robots.txt"), ("4xx", "url blocked due to other 4xx issue"),
     ("robots", "url blocked by robots.txt"), ("noindex", "url marked 'noindex'"), ("soft 404", "soft 404"),
     ("5xx", "server error (5xx)"), ("server error", "server error (5xx)"), ("redirect error", "redirect error"),
     ("404", "not found (404)"), ("not found", "not found (404)"), ("401", "blocked due to unauthorized request (401)"),
@@ -140,6 +158,8 @@ def canonical_reason(name: str) -> str | None:
     key = " ".join(str(name or "").strip().lower().replace("\u2018", "'").replace("\u2019", "'").split())
     if key in REASONS:
         return key
+    if key in _ALIASES:
+        return _ALIASES[key]
     return next((target for needle, target in _FALLBACK if needle in key), None)
 
 
