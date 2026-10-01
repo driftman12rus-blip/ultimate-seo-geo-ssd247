@@ -16,6 +16,10 @@ clear fix directive — not just diagnosis.
 
 **Reading budget:** load at most **3 files** from `references/` per response (procedure files count toward that limit). The Routing Index below says which ones.
 
+## SSD247 fork override
+
+For SSD247 audits, read `SSD247-PROFILE.md` before applying e-commerce or programmatic SEO rules. The profile overrides generic word-count, uniqueness, faceted-navigation, and return/shipping heuristics.
+
 ## 0. Before You Start
 
 ### Routing Index
