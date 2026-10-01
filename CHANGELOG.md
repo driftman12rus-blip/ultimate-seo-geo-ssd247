@@ -2,9 +2,9 @@
 
 ## [1.22.0] - 2026-10-01
 
-From the balloonbay.us AI facts page work (2026-10-01). The monthly AI visibility panel showed
+From an AI facts page built for a local service business (2026-10-01). Its monthly AI visibility panel showed
 Google AI Mode and ChatGPT giving a same-market competitor's 4.8/106 rating under the brand's name,
-placing the business in Saratoga Springs, NY rather than Saratoga, CA, inventing a street address for a
+placing the business in a better-known town of the same name in another state, inventing a street address for a
 service-area business, and quoting corporate buyers the $200 private-event price rather than the $800
 corporate minimum. The facts check could detect the first and last only partly, and the skill had no
 guidance on the fix. Minor per D-020: a new fact type and a new optional facts-file key.
@@ -38,19 +38,19 @@ guidance on the fix. Minor per D-020: a new fact type and a new optional facts-f
 - **Eval 17**: wrong brand facts in AI answers and an "AI instructions" page request, with a fixture.
 
 ### Fixed
-- **A competitor whose name contains the brand's was read as the brand.** With brand "Balloon Bay",
-  "Bloom Balloon Bay Area has a 4.8 rating" counted as a statement about Balloon Bay even when the
+- **A competitor whose name contains the brand's was read as the brand.** With brand "Party Co",
+  "Bloom Party Co Bay Area has a 4.8 rating" counted as a statement about Party Co even when the
   competitor was listed in `others`. A brand mention inside a listed competitor's longer name now
   belongs to the competitor.
 
 ## [1.21.3] - 2026-09-29
 
-1.21.2 let the image check reach balloonbay.us's real hero, and it then asked that hero for a
+1.21.2 let the image check reach a live site's real hero, and it then asked that hero for a
 `srcset` it should not have. Patch per D-020: one behaviour fix, plus an additive output key.
 
 ### Fixed
 - **A cover-fitted hero was told to add `srcset`.** `image_checker.py` raised "First <img> has no
-  srcset attribute." for balloonbay.us's hero poster, a 1920x696 `<img>` styled
+  srcset attribute." for a live site's hero poster, a 1920x696 `<img>` styled
   `position:absolute; inset:0; width:100%; height:100%; object-fit:cover` in a `min-height` hero.
   On a 375x812 phone its box is 375x946 CSS px, so `cover` draws the file 2608px wide: the 1920px
   source is already below display resolution, and a `srcset` would make phones pick smaller,
@@ -66,15 +66,15 @@ guidance on the fix. Minor per D-020: a new fact type and a new optional facts-f
   help, is not told apart. The JSON gains `lcp_srcset` (`assessed`, `has_srcset`, and when not
   assessed `reason` and `detected_by`: `inline-style`, `css` or `heuristic`). Wording and severity of
   the normal finding are unchanged, so `--previous` still matches.
-  On balloonbay.us (live, 2026-09-29) the medium finding is gone and the info note names `css`:
+  On that site (live, 2026-09-29) the medium finding is gone and the info note names `css`:
   the site inlines its stylesheet in a `<style>` block. Overall score is unchanged at 96, as the
   missing-srcset warning never carried a deduction; findings go from 1 medium + 8 info to 9 info.
 
 ## [1.21.2] - 2026-09-29
 
-A live audit of balloonbay.us raised three medium findings the page does not have, and the
+A live audit of a local-services site raised three medium findings the page does not have, and the
 sitemap check fetched every URL with TLS verification switched off. All four are fixed; on
-balloonbay.us the three false findings are gone and the overall score moves from 95 to 96.
+that site the three false findings are gone and the overall score moves from 95 to 96.
 Patch per D-020: behaviour fixes, plus additive output keys.
 
 ### Security
@@ -90,24 +90,24 @@ Patch per D-020: behaviour fixes, plus additive output keys.
 ### Fixed
 - **Image and aria-label links were "links with no anchor text".** `internal_links.py` read only
   a link's visible text, so client-logo links (`<a><img alt="Intuit"></a>`) and card links named by
-  `aria-label` were counted as empty (9 on balloonbay.us's homepage), although the finding's own fix
+  `aria-label` were counted as empty (9 on the audited homepage), although the finding's own fix
   says aria-label or alt is the remedy. Links are now read by their accessible name: `aria-label`,
   then `aria-labelledby` when its ids resolve, then visible text, then image `alt` and SVG
   `<title>`, then `title`. `site_graph.py` records the same name, so the anchor audit and
   navigation checks agree with the empty-anchor count (`site_graph.accessible_name()`).
 - **A decorative header logo was judged as the LCP image.** `image_checker.py` took the first
-  `<img>` in the document, which on balloonbay.us is a 52px logo with `alt="" aria-hidden="true"`,
+  `<img>` in the document, which on the audited site is a 52px logo with `alt="" aria-hidden="true"`,
   and asked for `fetchpriority="high"` on it. The LCP candidate now skips images whose declared
   width and height are both under 200px, and decorative images (`alt=""`, `aria-hidden`,
   `role=presentation`) unless their declared size is large (a hero poster is often `alt=""`). A
   `<link rel="preload" as="image" fetchpriority="high">` satisfies the fetchpriority check;
   attribute names are read case-insensitively (React writes `fetchPriority`). LCP findings now
   carry the candidate's `src` as evidence. Finding wording is unchanged, so `--previous` still
-  matches. On balloonbay.us the check now reaches the real hero and reports that it has no
+  matches. On that site the check now reaches the real hero and reports that it has no
   `srcset` (true: `/img/hero-slide.webp` is served at 1920px to every screen).
 - **Phone numbers and dates were claims needing citations.** `content_quality.py` counted every
   regex hit on the whole page, so the last four digits of a phone number (8 times on
-  balloonbay.us), review dates, `© 2026`, `Last updated: ...` and "since 2019" produced "1 claim(s)
+  the audited site), review dates, `© 2026`, `Last updated: ...` and "since 2019" produced "1 claim(s)
   appear to need stronger citation support". Claims are now counted per sentence in the page's own
   content: header, nav and footer, `tel:` links, phone numbers, dates and years, copyright and
   "last updated" lines are left out. The finding names up to three of the sentences it counted
@@ -288,7 +288,7 @@ login` needs `--client-secrets` until the maintainer's client ships.
   human basis and the other analyses drop them. Findings: `topic_spike_non_human` (Decision)
   and `topic_spike_real_interest` (opportunity). `--all` includes it.
 
-  Built on 28,768 real Improvado query rows:
+  Built on 28,768 real query rows from a B2B SaaS client:
   - the ad-fraud topic is found as one: 36 queries, 1,836 -> 1,052,907 impressions, 1 click;
   - a news topic ('astra / claude fable', 0 -> 13,089 impressions, 268 clicks) is found as
     real interest;
@@ -311,18 +311,18 @@ login` needs `--client-secrets` until the maintainer's client ships.
   - **tracking vendors and third-party hosts per page**, with a tag-load finding at 10+
     vendors.
 
-  This is F26 from the Improvado v4.1 audit: the site's chat widget called
-  `agent.improvado.io/ask` from every browser, with no key and `Access-Control-Allow-Origin: *`,
+  This is F26 from a client audit: the site's chat widget called
+  an `agent.` subdomain's `/ask` endpoint from every browser, with no key and `Access-Control-Allow-Origin: *`,
   and a crawl saw only the `llms.txt` line. Built against live sites, whose false positives
   shaped the rules:
   - open CORS on `GET`s of public data (posthog.com's 43 Gatsby page-data files, Cloudflare's
     OneTrust files, Vercel's Next.js prefetches) is not a finding;
-  - self-hosted analytics ingestion (PostHog's `/e/`, `/flags/`) and tag proxies (Improvado's
+  - self-hosted analytics ingestion (PostHog's `/e/`, `/flags/`) and tag proxies (a client's
     `/_tag/`) are not APIs;
-  - HTML pages that look API-shaped (Improvado's `/mcp/<source>` pages in `llms.txt`) are
+  - HTML pages that look API-shaped (a client's `/mcp/<source>` pages in `llms.txt`) are
     skipped, and a 403 HTML refusal is not read as authentication.
 
-  On improvado.io the widget is gone, the endpoint is still open, and the homepage loads 13
+  On the client's site the widget is gone, the endpoint is still open, and the homepage loads 13
   tracking vendors from 43 third-party hosts.
 - **GA4 conversion audit: `ga4_audit.py` (Tier 2).** It checks a conversion event before
   anyone quotes it:
@@ -337,10 +337,10 @@ login` needs `--client-secrets` until the maintainer's client ships.
 
   `--save-monthly` writes the clean monthly series by channel that
   `conversion_reconcile.py --ga4` reads. `--save-rows`/`--replay` work without credentials.
-  These are the Improvado v4.1 questions the report could not answer from GA4: 108 July
+  These are the questions a client audit report could not answer from GA4: 108 July
   events from one visitor, an unexplained step between August and September 2025, and 10.9%
   of organic landing pages `(not set)`.
-- **Demo requests on two rulers: `conversion_reconcile.py`.** The Improvado v4.1 report
+- **Demo requests on two rulers: `conversion_reconcile.py`.** A client audit report
   headlined a 44% fall in GA4 organic demo requests, while the client's CRM showed the
   number of distinct clean business people asking for a demo rising 7%. The raw series was
   contaminated three ways: a spam burst, the team's own tests from developer and preview
@@ -360,7 +360,7 @@ login` needs `--client-secrets` until the maintainer's client ships.
   estimates the real submissions lost with them.
 - **Human-only Search Console figures: `gsc_insights.py --human-basis`.** Search Console
   has no user agent, so rank trackers, scrapers and agents arrive as queries and move
-  site-level position, CTR and impressions. The Improvado v4.1 report read a position gain
+  site-level position, CTR and impressions. A client audit report read a position gain
   that the client's own board showed was mostly machine traffic. Each query is now labelled:
   - **machine** when its text is machine-shaped (search operators, URLs, quoted-phrase
     templates, scraper syntax);
@@ -377,9 +377,9 @@ login` needs `--client-secrets` until the maintainer's client ships.
   queries only, so no title rewrite is proposed for a query no person typed;
   `--include-machine` restores the old behaviour.
 
-  Calibrated on 28,768 real Improvado query rows. On Sep 2-15 2026, 41% of impressions were
+  Calibrated on 28,768 real query rows from a B2B SaaS client. On Sep 2-15 2026, 41% of impressions were
   machine or agent-like and earned 8 clicks, and 56% of the position gain since Aug 18-31 was
-  non-human. A site's own CTR curve could not find this: Improvado's median CTR was 0% at
+  non-human. A site's own CTR curve could not find this: The client's median CTR was 0% at
   every position, so the floor is fixed.
 - **Search Console sign-in for every user: `google_auth.py`.** `setup` installs the Google
   libraries into the skill's own venv (`~/.config/ultimate-seo-geo/venv`). `login` opens a
@@ -509,7 +509,7 @@ login` needs `--client-secrets` until the maintainer's client ships.
   - **Coverage.** At most `--max-fetch` candidates are read: those naming a term in their title or
     H1 first, then the target's own section, then the shallowest. The output counts the unread
     ones. `--gsc-pages` orders the results by the source page's clicks.
-  - **Calibration.** Checked on 40-page graphs of posthog.com, balloonbay.us,
+  - **Calibration.** Checked on 40-page graphs of posthog.com, a local-services site,
     developers.cloudflare.com and smashingmagazine.com. Every first-draft false positive is now a
     named test.
 - **Site-wide redirects in `redirect_checker.py --graph site_graph.json`.** It follows every
@@ -529,7 +529,7 @@ login` needs `--client-secrets` until the maintainer's client ships.
 ### Changed
 - **`gsc_query.py` returns one row per page.** Search Console reports jump links and sitelinks
   as their own URLs, so a long post with a table of contents was split across several rows and
-  any one row undercounted the page. On the Improvado v4.1 audit, per-post impressions for the
+  any one row undercounted the page. On a client audit, per-post impressions for the
   ad-fraud posts were read from single anchor rows (`#what-is-ad-fraud`), about half the page
   total the client measured. Page rows are now summed across fragment, query-string,
   trailing-slash and host-case spellings (`gsc_insights.page_key`). Position is re-weighted by
@@ -705,13 +705,13 @@ issue lines. Patch per D-020: behaviour fixes, no new capability.
   -15 once; an HTTPS-to-HTTP downgrade -40.
 - **The http-to-https upgrade is not "mixed protocol".** `redirect_checker.py` flagged any chain
   containing both schemes, so auditing an `http://` URL penalised the one redirect every site
-  should have (balloonbay.us: redirects 75 on the http URL, 100 now). It flags only a step from
+  should have (one live site: redirects 75 on the http URL, 100 now). It flags only a step from
   https down to http, now as a critical finding: that hop drops the page off TLS. `has_mixed_protocol`
   keeps its meaning; `has_downgrade` is new.
 
 ### Score effect
 Sites with broken internal pages score higher on internal links; sites with 5xx internal pages
-score lower. Redirect scores rise for 302s, fall to 0 for loops and dead chains. On balloonbay.us over
+score lower. Redirect scores rise for 302s, fall to 0 for loops and dead chains. On a live site tested over
 https nothing moves (no broken pages, no redirects). Internal links weigh 8, redirects 3.
 
 - `tests/test_link_and_redirect_scoring.py` (19 tests), which drives `internal_links.crawl_site` and
@@ -739,7 +739,7 @@ Two follow-ups to 1.19.0. Patch per D-020: behaviour fixes, no new capability.
 - **The entity score counts defects, not notes.** It subtracted 10 per issue whatever its severity,
   so an info note or a "could not verify" data gap cost as much as a broken profile URL, and the
   score moved with how findings were itemised. Info and low findings now cost nothing. **Entity
-  scores rise on most sites** (balloonbay.us: entity 50 to 90, overall 93 to 94); the check weighs 5.
+  scores rise on most sites** (one live site: entity 50 to 90, overall 93 to 94); the check weighs 5.
 
 ### Note
 The first `--previous` comparison across this release lists the three old sameAs findings as fixed
@@ -791,7 +791,7 @@ on its own first. Minor per D-020: new report capability; the JSON additions are
   validated by reintroducing defects.
 
 ### Fixed
-Seven defects a live run (balloonbay.us) exposed and the fixtures had not. On that site they were
+Seven defects a live run on a local-services site exposed and the fixtures had not. On that site they were
 both of its Critical / High findings: it now reports 0 critical, 0 high, and 93 rather than 92.
 - **Cloudflare Email Obfuscation is not a broken link.** Cloudflare rewrites every `mailto:` to
   `/cdn-cgi/l/email-protection#…`, which answers 404 to a crawler by design, so any site showing an
@@ -854,7 +854,7 @@ applied to the last renderer that still carried its own palette, no new capabili
 
 ### Changed
 - **`scripts/pdf_template.py`** and **`scripts/pdf_charts.py`** — the WeasyPrint report and its
-  SVG charts (gauge, radar, Core Web Vitals bars, severity donut) use the Tobto tokens that
+  SVG charts (gauge, radar, Core Web Vitals bars, severity donut) use the design-system tokens that
   `report.css` adopted in 1.18.0: brand blue for heading rules, links and the medium severity,
   the ink ladder for text and lines, red-500 / amber-500 / green-500 for fills and strokes with
   the -700 steps as type on soft tints for the score badges, ink-400 for low severity. Type is
@@ -863,9 +863,9 @@ applied to the last renderer that still carried its own palette, no new capabili
 
 ## [1.18.0] - 2026-09-18
 
-The report set adopts the Tobto design system. `report.css` kept the palette and faces extracted
-from the Improvado deliverable (teal accent, IBM Plex, Source Serif); the client set and the
-automated report now use Tobto's tokens so every document the skill produces looks like the
+The report set adopts a new design system. `report.css` kept the palette and faces extracted
+from an earlier client deliverable (teal accent, IBM Plex, Source Serif); the client set and the
+automated report now use the new tokens so every document the skill produces looks like the
 brand that ships it. Approved from a side-by-side comparison of the same markup under both token
 sets. Minor per D-020: a visual-system refresh, no behaviour or contract change; the token
 *names* are unchanged, so `render_report.py`, `generate_report.py --accent` white-labelling and
@@ -873,22 +873,22 @@ every pinned test key still work.
 
 ### Changed
 - **`references/report-template/report.css` tokens** — accent is the brand blue `#0057B7`
-  (`blue-300` on dark), neutrals are Tobto's ink ladder on a white page, and each semantic hue
+  (`blue-300` on dark), neutrals are the ink ladder on a white page, and each semantic hue
   (`critical`, `warn`, `good`) uses the -700 step as type on light and the -300 step on dark, with
   soft fills at about 12% of the -500 hue. Surfaces separate with hairlines: `--shadow` is `none`.
   Cards round to `--r-card` (14px) and chips to `--r-chip` (6px). Type is Instrument Sans for
   everything and JetBrains Mono for IDs, numbers, code and eyebrows; `--serif` is kept as an alias
-  of `--sans` so existing markup resolves. The eyebrow becomes the Tobto mono label (muted, not
+  of `--sans` so existing markup resolves. The eyebrow becomes the design system's mono label (muted, not
   accent-coloured) and `h1` drops to weight 600.
 - **`scripts/generate_report.py`** and **`scripts/render_report.py`** — the Google Fonts link
   requests Instrument Sans and JetBrains Mono; the embedded fallback stylesheet carries the same
   tokens as `report.css`.
 - **`references/report-template/components.html`** — regenerated from the new stylesheet.
-- **`report-template.md` § 8** — records the Tobto sources and the colour rules.
+- **`report-template.md` § 8** — records the design-system sources and the colour rules.
 
 ### Added
-- **`--opp` token** — Blaze orange `#FF6A1A`, Tobto's secondary accent, used only as the border of
-  opportunity findings and "new page" cards, never as small type (the Tobto rule). Both light and
+- **`--opp` token** — Blaze orange `#FF6A1A`, the secondary accent, used only as the border of
+  opportunity findings and "new page" cards, never as small type (the design system's rule). Both light and
   dark use the same value.
 
 ## [1.17.0] - 2026-09-17
@@ -1343,7 +1343,7 @@ unescaped, and it scored a rate-limited PageSpeed run as a failing 0.
 
 ### Changed
 
-- **The HTML report uses the Tobto design system in a Ledger layout.** `generate_report.py`'s
+- **The HTML report uses the new design system in a Ledger layout.** `generate_report.py`'s
   dashboard (gradient header, score rings, 23 collapsible emoji sections) is replaced by three parts:
   a soft brand-blue band with the domain, overall score and grade, severity counts, and a "Start here" link to
   the first critical or warning finding; a **findings ledger** filterable by severity, where each row
@@ -2066,7 +2066,7 @@ contradictions are resolved and a parity test added so they cannot silently retu
   **There was no core update in July or August 2026** — the most recent is May 2026 — and several
   third-party trackers claim otherwise.
 
-- **`.gitignore`** — Added `.axme-code/` (AXME agent session data, audit logs and knowledge base — ~681 files regenerated per session) and `.mcp.json` (MCP server wiring pointing at a locally installed binary). Both sat untracked in the repo root and appeared in every `git status`, making accidental inclusion in unrelated commits easy. Neither was ever tracked, so no history is affected. `.cursor/rules/*.md` is deliberately not ignored — those are authored shared agent rules rather than generated state.
+- **`.gitignore`** — Added a local agent tool's session directory (session data, audit logs and knowledge base — ~681 files regenerated per session) and `.mcp.json` (MCP server wiring pointing at a locally installed binary). Both sat untracked in the repo root and appeared in every `git status`, making accidental inclusion in unrelated commits easy. Neither was ever tracked, so no history is affected. `.cursor/rules/*.md` is deliberately not ignored — those are authored shared agent rules rather than generated state.
 
 - **Retired the "zero-click impressions ⇒ AI Overview presence" proxy** — superseded by direct
   measurement. Retained only for date ranges predating the report's availability on a property.
