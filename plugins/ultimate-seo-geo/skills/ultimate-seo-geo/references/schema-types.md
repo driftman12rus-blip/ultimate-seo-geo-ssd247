@@ -7,7 +7,7 @@
 
 Always use **JSON-LD** (`<script type="application/ld+json">`). Google's documentation explicitly recommends JSON-LD over Microdata and RDFa.
 
-**AI Search Note:** Content with proper schema has ~2.5× higher chance of appearing in AI-generated answers (confirmed Google/Microsoft, March 2025).
+**AI Search Note:** Structured data can improve machine-readable entity/product information and eligibility for documented search features. Do not claim a fixed AI-citation multiplier; no universal 2.5× platform guarantee is established.
 
 ---
 
@@ -29,7 +29,7 @@ Always use **JSON-LD** (`<script type="application/ld+json">`). Google's documen
 | Review | Individual reviews | reviewRating, author, itemReviewed, reviewBody |
 | AggregateRating | Rating summaries | ratingValue, reviewCount, bestRating, worstRating |
 | BreadcrumbList | Navigation path | itemListElement with position, name, item |
-| WebSite | Site-level | name, url, potentialAction (SearchAction for sitelinks) |
+| WebSite | Site-level | name, url; SearchAction is optional legacy markup and no longer produces Google's sitelinks search box |
 | WebPage | Page-level | name, description, datePublished, dateModified |
 | Person | Author/team | name, jobTitle, url, sameAs, image, worksFor |
 | ProfilePage | Author profile pages | mainEntity (Person), name, url, description, sameAs |
