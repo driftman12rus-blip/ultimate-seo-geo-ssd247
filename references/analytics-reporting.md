@@ -140,7 +140,7 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 
 **Engagement metrics (replace Bounce Rate from UA):**
 - **Engaged sessions**: Sessions > 10 seconds OR ≥ 2 pageviews OR conversion event
-- **Engagement rate**: Engaged sessions ÷ Total sessions (60%+ is healthy for content)
+- **Engagement rate**: Engaged sessions ÷ Total sessions; benchmark against SSD247's own page types, device mix and historical baseline rather than a universal healthy percentage
 - **Average engagement time**: Replaces Time on Page — compare by landing page
 
 **Conversion tracking:**
@@ -157,7 +157,7 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 
 2. **Content Decay Dashboard**
    - Compare organic traffic by landing page: current 90 days vs. prior year 90 days
-   - Flag pages with > 20% traffic decline for content audit
+   - Surface material traffic declines relative to the page's own normal variance; use a configurable threshold rather than treating 20% as universal
 
 3. **New vs. Returning Organic Visitors**
    - Segmented by source = organic
@@ -177,7 +177,7 @@ GSC shows CrUX (real user) data, which is what Google uses for rankings:
 
 These ranges are for orientation. With Search Console access, judge a query against the property's own median CTR at the same position: `python scripts/gsc_insights.py sc-domain:example.com --low-ctr --json` flags CTR below half of it.
 
-**Below-benchmark CTR at any position** → rewrite title tag and meta description. Test question-format titles, add numbers, power words, or year.
+**Below-own-baseline CTR at comparable position/query mix** → inspect title/snippet relevance first. Test clearer wording when appropriate; do not force question formats, numbers, "power words", or years.
 
 ---
 
