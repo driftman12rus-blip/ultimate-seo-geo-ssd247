@@ -70,7 +70,7 @@ Different content types emphasize different dimensions. Use the appropriate weig
 | ID | Item | Pass | Partial | Fail |
 |---|---|---|---|---|
 | C01 | **Intent Alignment** ⚠️ VETO | Content directly addresses the user's search intent | Partially addresses intent but drifts | Mismatches intent entirely |
-| C02 | **Direct Answer** | Target query answered in first 150 words | Answer present but buried (150–500 words in) | No direct answer to the core query |
+| C02 | **Direct Answer** | Core query answered clearly where users expect it | Answer present but unnecessarily hard to find | No direct answer to the core query |
 | C03 | **Query Coverage** | All facets of the query addressed | Major facets covered, minor ones missing | Key aspects of the query ignored |
 | C04 | **Definition First** | Key term defined in opening paragraph | Definition present but not prominent | No clear definition of core concept |
 | C05 | **Topic Scope** | Comprehensive coverage appropriate to format | Adequate but missing 1–2 important subtopics | Superficial or off-topic |
@@ -100,13 +100,13 @@ Different content types emphasize different dimensions. Use the appropriate weig
 | ID | Item | Pass | Partial | Fail |
 |---|---|---|---|---|
 | R01 | **Data Precision** | Specific numbers with sources ("73% of users, Forrester 2025") | Numbers present but unsourced | Vague claims ("many users", "most people") |
-| R02 | **Citation Density** | 5+ citations to authoritative sources per 1,000 words | 2–4 citations per 1,000 words | Fewer than 2 citations per 1,000 words |
+| R02 | **Source Support** | Claims that need evidence use appropriate primary/authoritative sources | Some unsupported material claims | Important factual/research claims lack support |
 | R03 | **Source Hierarchy** | Primary sources cited (studies, official docs, original data) | Mix of primary and secondary sources | Only secondary or no sources |
 | R04 | **Evidence-Claim Mapping** | Every major claim has supporting evidence | Most claims supported; some unsupported | Claims made without evidence |
 | R05 | **Methodology Transparency** | Process/methodology explained when presenting data or results | Methodology implied but not explicit | Results stated without method |
 | R06 | **Timestamp & Versioning** | Publication date + last-updated date visible | Publication date only | No dates visible |
 | R07 | **Entity Precision** | People, organizations, products named precisely | Some entities named, others vague | Generic references ("experts say") |
-| R08 | **Internal Link Graph** | 3–5 relevant internal links per 1,000 words | 1–2 internal links per 1,000 words | No internal links |
+| R08 | **Internal Link Graph** | Relevant internal links support discovery and context | Some useful connections missing | Important page is isolated/orphaned |
 | R09 | **HTML Semantics** | Proper use of semantic HTML (article, section, aside, figure) | Some semantic elements | No semantic HTML; div soup |
 | R10 | **Content Consistency** ⚠️ VETO | No contradictions within content or vs. other site pages | Minor inconsistencies that don't mislead | Contradictory claims or data |
 
