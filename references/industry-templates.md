@@ -130,9 +130,9 @@ Load when § 2 business type detection identifies a specific industry.
 
 ### E-commerce-Specific DO NOTs
 
-- Never use thin category pages with only a product grid and no text
-- Never leave product descriptions as manufacturer copy — duplicate content across competitors
-- Never omit `width`/`height` on product images — CLS is a major e-commerce issue
+- A product-grid-only category is not automatically thin; add category copy only when it improves intent coverage or measured search performance
+- Manufacturer copy is not automatically a penalty; improve descriptions where SSD247 can add useful distinguishing facts, compatibility, comparisons, or where duplication/indexation data shows a problem
+- Prevent image-driven CLS with reserved aspect ratio/layout space; width/height attributes are one valid implementation
 
 ---
 
@@ -169,8 +169,7 @@ Load when § 2 business type detection identifies a specific industry.
 ### Location Page Quality Gates
 
 - ≤30 location pages: ensure each has unique local content (address, team, local reviews, locally-relevant body copy)
-- 30–50 pages: WARNING — content differentiation review required
-- 50+ pages: HARD STOP — each page must justify existence with substantive unique content beyond city name swap
+- Large location-page sets require evidence that each page serves a distinct real user need; page count alone is not a warning or hard stop
 
 ### Content Priority Order
 
@@ -225,13 +224,13 @@ Load when § 2 business type detection identifies a specific industry.
 
 - Paginated category pages (page 2, 3...): `rel="prev"` / `rel="next"` are deprecated by Google — use self-referencing canonicals on each paginated page instead
 - Deep paginated pages (page 10+): consider noindex to conserve crawl budget
-- Never noindex the main category page
+- Keep valuable primary category pages indexable unless evidence supports a different strategy; do not use blanket rules
 
 ### Publisher-Specific DO NOTs
 
 - Never publish AI-generated content without expert review and attribution — post-Dec 2025 E-E-A-T change makes this high-risk for publishers
 - Never use `rel="prev"`/`rel="next"` for pagination — Google dropped support; this hint is ignored
-- Never block archive/category pages from indexing — these are significant traffic sources
+- Decide archive/category indexation from actual search value and duplication, not a blanket allow/block rule
 
 ---
 
@@ -250,11 +249,11 @@ Load when § 2 business type detection identifies a specific industry.
 
 | Page Type | Word Floor | Rationale |
 |---|---|---|
-| SaaS feature page | 600–1,000 words | Enough to cover use cases, FAQs, integrations |
-| E-commerce category page | 300–500 words | Above-product description; don't over-stuff |
-| E-commerce product page | 300–600 words | Unique description + specs + use cases |
-| Local service page | 600–800 words | Service details + local signals + FAQs |
-| Blog / article | 1,500–2,500 words | Full topic coverage for competitive queries |
-| Pillar page | 3,000–5,000 words | Cluster anchor; must cover topic comprehensively |
+| SaaS feature page | No fixed word target | Cover use cases/integrations users need |
+| E-commerce category page | No fixed word target | Add useful buying/category context where warranted |
+| E-commerce product page | No fixed word target | Accurate specs, identity, compatibility and useful differentiators |
+| Local service page | No fixed word target | Service + real local signals where relevant |
+| Blog / article | No fixed word target | Match depth to query intent |
+| Pillar page | No fixed word target | Cover the cluster coherently without padding |
 
-These are floors based on competitive analysis, not magic numbers. Always audit top-ranking competitors' word counts for a given query.
+Competitor length can be descriptive context, but do not copy its word count as a target. Audit missing topics, intent satisfaction and useful differentiation instead.
