@@ -7,6 +7,12 @@
 
 ---
 
+## Evidence standard for this reference
+
+This file contains platform facts plus third-party studies. Keep those categories separate. Exact correlations, citation shares, passage lengths, freshness multipliers and uplift percentages are **study-specific observations**, not universal platform requirements and not guaranteed effects. For SSD247, they may motivate an experiment but must not create a Critical/High/Warning finding by themselves. Prefer current official crawler/platform documentation and repeated citation sampling over benchmark-derived rules.
+
+Any GEO Health Score below is an internal comparison rubric only. It is not a Google, OpenAI, Perplexity or Bing score and must not be described as a ranking probability.
+
 ## 2026 AI Search Landscape
 
 | Platform | Reach | Query Coverage | Key Insight |
@@ -27,11 +33,11 @@
 
 | Dimension | Weight | Optimal Signal |
 |---|---|---|
-| Citability | 25% | 134-167 word self-contained answer blocks, direct answer in first 40-60 words of section |
-| Structural Readability | 20% | Clean H1→H2→H3, question-based headings, 2-4 sentence paragraphs, tables, lists |
-| Authority & Brand Signals | 20% | Author bio + credentials, publication dates, citations, entity presence across platforms |
+| Citability | 25% | Clear, self-contained facts and answers that can be understood without hidden context; no fixed word-count target |
+| Structural Readability | 20% | Clear page structure, useful headings, tables/lists where they improve comprehension; no required heading count/order for ranking |
+| Authority & Brand Signals | 20% | Verifiable entity/fact consistency and appropriate trust signals for the page type; product pages do not require editorial bylines |
 | Technical Accessibility | 20% | AI search crawlers allowed in robots.txt (`generate_report.py` scores this as `ai_search_access`), server-side rendering, key content present in raw HTML |
-| Multi-Modal Content | 15% | Text + images + video + structured data (78% of cited sources combine these) |
+| Multi-Modal Content | 15% | Relevant media and structured facts where they genuinely help the user; not a quota |
 
 **Scoring formula**: score each dimension **0–100**, then `Σ(dimension weight × dimension score)`. Weights sum to 100%, so the result is already on the 0–100 scale — no further division. (Worked example: `references/audit-output-example.md` § Example 3.)
 
@@ -58,14 +64,14 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 
 ## Citability Signals (Dimension 1: 25%)
 
-**Optimal passage length: 134-167 words** for AI citation extraction.
+There is no universal platform-documented optimal passage length. Use self-contained, concise sections when that improves comprehension, then test citation behavior empirically.
 
 `scripts/citability_checker.py` measures the structural side of this dimension and of Structural Readability on one page: prose walls, paragraph length, the heading outline and specific figures, plus whether it opens with a lead paragraph. It does not know the target query, so whether a passage *answers* it stays a judgment call.
 
 ### Strong Citability Signals
 - Clear, quotable sentences with specific facts, statistics, or data
 - Self-contained answer blocks (extractable without surrounding context)
-- Direct answer in first 40-60 words of each section
+- Put the useful answer early when it helps the reader; no fixed 40–60-word cutoff
 - Claims attributed to specific sources ("According to [Study], X% of...")
 - Definition patterns: "X is...", "X refers to...", "X means..."
 - Unique data points not found elsewhere on the web
@@ -81,13 +87,13 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 - **Middle 30-70%**: 31.1% of citations
 - **Final 30%**: 24.7% of citations
 
-**Implication**: Lead with the answer, not with context. Top-loading key information is the single highest-leverage writing change.
+**Interpretation**: some studies observe more citations earlier in pages. Treat this as a writing experiment, not a platform requirement or guaranteed highest-leverage change.
 
 ### Content Recency as Citation Lever
-Content under 3 months old receives approximately **3x the AI citation rate** compared to older content (SE Ranking, 2026). AI systems strongly favor fresh, recently updated content. Implications:
+One 2026 study reported materially higher citation rates for newer content. This is observational and query-dependent; freshness matters mainly when facts or intent are time-sensitive. Possible tests:
 - Add visible `dateModified` to all key pages when updating content
 - Refresh statistics, data points, and examples at least quarterly on high-value pages
-- New content has a recency window of ~3 months where citation probability is highest
+- Measure whether genuinely refreshed, time-sensitive pages gain citations; do not update evergreen pages merely to reset a date
 
 ---
 
@@ -96,7 +102,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 47% of AI Overview citations come from pages ranking **below position 5** — demonstrating that AI selection logic differs from traditional ranking.
 
 ### Strong Structural Signals
-- Clean heading hierarchy: H1 (one per page) → H2 (main sections) → H3 (subsections)
+- Clear semantic/visual headings that help readers navigate; Google does not require exactly one H1 or strict H1→H2→H3 order
 - Question-based headings that match query patterns: "How does X work?", "What is the difference between X and Y?"
 - Short paragraphs: 2-4 sentences, one idea per paragraph
 - Tables for comparative information (formats, pricing, options)
@@ -115,7 +121,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 
 ### Brand Mentions vs. Backlinks
 
-**Brand mentions are 3× more predictive of AI visibility than backlinks.**
+Some third-party studies report stronger correlation between brand mentions and AI citations than between backlinks and citations. Correlation is not causation and should not be used as a fixed weighting.
 
 | Signal | Correlation with AI Citations |
 |---|---|
@@ -135,7 +141,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 2. **Reddit** — genuine participation in relevant subreddits (r/ProductManagement, r/SaaS, r/startups, etc.)
 3. **Wikipedia / Wikidata** — create entity entry with citations; link to your site
 4. **LinkedIn** — publish articles (not just posts) that LinkedIn indexes as standalone pages
-5. **Third-party review sites** — G2, Trustpilot, Capterra, Yelp (3× citation increase for brands with profiles)
+5. **Third-party review sites** — maintain accurate profiles where customers actually use them; do not assume a fixed citation uplift
 6. **arXiv / research** — for scientific/technical domains
 
 ### Tactical Playbooks per Channel
@@ -334,9 +340,7 @@ Useful for organizations wanting to differentiate between allowing AI Search cit
 
 ## Multi-Modal Content (Dimension 5: 15%)
 
-Content with multi-modal elements sees **156% higher AI selection rates**.
-
-**78% of AI-cited sources** combine text, images, and structured data.
+Some datasets associate multi-modal pages with higher AI citation/selection rates. Treat those percentages as dataset-specific observations, not a requirement. Add media only when it improves the page.
 
 ### What to Include
 - Feature images / hero images (with descriptive alt text)
