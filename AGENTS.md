@@ -273,7 +273,7 @@ Citability 25% · Structural Readability 20% · Authority & Brand Signals 20% ·
 `references/procedures/03-geo-ai-search.md`. **Technical Accessibility does not include llms.txt** —
 Google confirmed (June 2026) that Search ignores it.
 
-**Key insight**: 44.2% of AI citations come from the first 30% of content.
+**GEO note**: front-loading clear answers can be tested as a citability experiment, but exact placement percentages are study-specific and are not platform requirements.
 
 Scripts: `robots_checker.py`, `entity_checker.py`, `preferred_sources_checker.py`, `social_meta.py`
 
@@ -303,7 +303,7 @@ the **initial server-rendered HTML**, never JS-only.
 
 ## 5. Schema / Structured Data
 
-Always use JSON-LD. Schema improves AI citation likelihood ~2.5×.
+Prefer JSON-LD where practical. Structured data can help search engines understand eligible entities/features, but do not claim a fixed AI-citation multiplier.
 
 ### Priority Schema by Site Type
 
@@ -328,7 +328,7 @@ E-E-A-T is universal for all competitive queries (December 2025). AI content acc
 
 **Functional page exemption:** Sign up, sign in, log in, register, create account, forgot/reset password, membership enroll, checkout, cart, account dashboard, profile settings — these are task-completion UI pages. Do NOT flag them as thin content. Do NOT recommend adding more copy. Applicable checks: title accuracy, meta description, form labels, trust signals, schema.
 
-Key checks (content/marketing pages only): Named author with credentials? First-hand experience signals? Word count floors (blog 1,500+, service 800+, homepage 500+) — but thoroughness matters more than count. Thin content signals: copied definitions, no original research, no author bio.
+Key checks (content/marketing pages only): Does the page satisfy its search/user intent? Are claims accurate and useful? Word count is diagnostic only — Google has no minimum. Thin/low-value content must be evidenced by duplication, missing substance, poor indexation, or weak usefulness rather than a fixed length.
 
 For the full E-E-A-T scoring framework, CORE-EEAT 80-item benchmark, and CITE domain rating → read `references/procedures/06-content-eeat-and-pruning.md` and `references/eeat-framework.md`, `references/core-eeat-framework.md`, `references/cite-domain-rating.md`.
 
@@ -384,7 +384,7 @@ Script: `local_signals_checker.py` → `references/local-seo.md`
 
 ## 13. Image SEO
 
-Alt text (10–125 chars), WebP format, file sizes (thumbnails <50KB, content <100KB, heroes <200KB), `srcset` + `sizes`, never lazy-load LCP image, `fetchpriority="high"` on LCP, `width`/`height` on all `<img>`.
+Use contextual alt text for meaningful images and `alt=""` for decorative images. Optimize actual delivered bytes/dimensions; JPEG, PNG, WebP and AVIF are valid. `srcset`/`sizes`, dimensions and fetchpriority are implementation tools to assess against real layout/performance, not universal pass/fail requirements. Do not lazy-load a confirmed LCP image.
 
 Script: `image_checker.py` → `references/image-seo.md`
 
@@ -400,7 +400,7 @@ Script: `hreflang_checker.py` → `references/international-seo.md`
 
 ## 15. Programmatic SEO
 
-Quality gates: >100 pages = warning; >500 pages OR <30% unique content = hard stop; <40% differentiation = thin content risk. Publish in batches of 50–100. Never approve city pages where only the city name changes.
+Scale, word count and measured uniqueness percentages are diagnostics, not automatic violations. Flag programmatic pages only when evidence shows duplicate intent, doorway/scaled-abuse patterns, poor indexation, cannibalization, or low user value.
 
 Script: `programmatic_seo_auditor.py` → `references/programmatic-seo.md`
 
