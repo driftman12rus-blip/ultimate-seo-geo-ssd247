@@ -249,17 +249,17 @@ def analyze_html(html: str, base_url: str) -> dict:
 
         if loading == "lazy":
             lcp_issues.append({
-                "severity": "critical",
-                "finding": "First <img> has loading=\"lazy\" — this delays the LCP element.",
+                "severity": "warning",
+                "finding": "Likely hero/LCP candidate has loading=\"lazy\"; verify with PageSpeed/DevTools before treating it as the actual LCP element.",
                 "evidence": evidence,
-                "fix": "Remove loading=\"lazy\" from the first/hero image. Only lazy-load below-the-fold images.",
+                "fix": "If measurement confirms this image is LCP/above the fold, remove lazy loading; otherwise no change is required.",
             })
         if fetchpriority not in ("high",) and preload is None:
             lcp_issues.append({
-                "severity": "warning",
-                "finding": "First <img> is missing fetchpriority=\"high\".",
+                "severity": "info",
+                "finding": "Likely hero candidate has no fetchpriority=\"high\".",
                 "evidence": evidence,
-                "fix": "Add fetchpriority=\"high\" to the LCP/hero image to preload it sooner.",
+                "fix": "Consider fetchpriority only if measurement confirms this resource is LCP and priority is a bottleneck.",
             })
         # A cover-fitted image is scaled to fill its box. When the box is taller
         # relative to its width than the image (one live site's hero: a 375x946
@@ -279,10 +279,10 @@ def analyze_html(html: str, base_url: str) -> dict:
             })
         elif not has_srcset:
             lcp_issues.append({
-                "severity": "warning",
-                "finding": "First <img> has no srcset attribute.",
+                "severity": "info",
+                "finding": "Likely hero candidate has no srcset attribute.",
                 "evidence": evidence,
-                "fix": "Add srcset with multiple resolutions (e.g. image-480w.webp 480w, image-800w.webp 800w) for responsive delivery.",
+                "fix": "Review actual rendered size and transferred bytes; add responsive candidates only when they improve delivery.",
             })
 
     issues.extend(lcp_issues)
@@ -293,9 +293,9 @@ def analyze_html(html: str, base_url: str) -> dict:
 
     if total > 1 and missing_srcset > total // 2:
         issues.append({
-            "severity": "warning",
+            "severity": "info",
             "finding": f"{missing_srcset}/{total} images lack srcset.",
-            "fix": "Add srcset + sizes to serve correctly sized images on all screen densities.",
+            "fix": "Review actual responsive delivery/CDN behavior before changing markup; srcset is not a universal SEO requirement.",
         })
     if missing_sizes > 0:
         issues.append({
@@ -311,9 +311,9 @@ def analyze_html(html: str, base_url: str) -> dict:
     )
     if missing_dimensions > 0:
         issues.append({
-            "severity": "warning" if missing_dimensions > total // 2 else "info",
-            "finding": f"{missing_dimensions}/{total} images missing explicit width and/or height attributes.",
-            "fix": "Set width and height on every <img> to reserve layout space and prevent CLS.",
+            "severity": "info",
+            "finding": f"{missing_dimensions}/{total} images lack explicit width and/or height attributes.",
+            "fix": "Verify whether layout space is already reserved by CSS/aspect-ratio. Add intrinsic dimensions where useful to prevent measured CLS.",
         })
 
     # --- WebP format ---
@@ -344,10 +344,6 @@ def analyze_html(html: str, base_url: str) -> dict:
             deductions += 15
         elif pct_missing_alt > 0:
             deductions += 5
-        if any(i["severity"] == "critical" for i in lcp_issues):
-            deductions += 20
-        if missing_dimensions > total // 2:
-            deductions += 10
         score = max(0, 100 - deductions)
 
     recs = []
