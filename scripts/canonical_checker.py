@@ -148,13 +148,19 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
 
     # --- Multiple canonical tags ---
     if len(data["canonical_tags"]) > 1:
-        result["issues"].append({
-            "severity": "critical",
-            "finding": f"Multiple canonical tags found ({len(data['canonical_tags'])}): "
-                       + ", ".join(data["canonical_tags"][:3]),
-            "fix": "Remove duplicate canonical tags. Only one <link rel=\"canonical\"> "
-                   "should exist per page.",
-        })
+        normalized_targets = {_normalize_url(urljoin(final_url, x)) for x in data["canonical_tags"]}
+        if len(normalized_targets) > 1:
+            result["issues"].append({
+                "severity": "critical",
+                "finding": f"Conflicting canonical targets found ({len(data['canonical_tags'])} tags): "
+                           + ", ".join(data["canonical_tags"][:3]),
+                "fix": "Keep a single canonical target. Conflicting canonical annotations can cause Google to ignore the preference.",
+            })
+        else:
+            result["warnings"].append({
+                "type": "duplicate_identical_canonical",
+                "detail": f"{len(data['canonical_tags'])} identical canonical tags found. Redundant but not a conflicting signal.",
+            })
 
     tags = data["canonical_tags"]
     http_c = (data.get("http_canonical") or "").strip()
@@ -246,8 +252,8 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
         if "noindex" in data["meta_robots"]:
             if not is_self:
                 result["issues"].append({
-                    "severity": "critical",
-                    "finding": "Page has both noindex AND a canonical pointing to a "
+                    "severity": "warning",
+                    "finding": "Page has noindex plus a canonical pointing to a "
                                f"different URL ({raw_canonical}). Google may ignore both.",
                     "fix": "Remove noindex if you want the canonical target indexed. "
                            "Or remove the canonical if you want this page excluded entirely.",
