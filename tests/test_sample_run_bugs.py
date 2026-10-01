@@ -1,4 +1,4 @@
-"""Defects a live report run exposed (balloonbay.us, 2026-09-18) that fixtures had not.
+"""Defects a live report run exposed (a live site, 2026-09-18) that fixtures had not.
 
 * Cloudflare Email Obfuscation turns every mailto: into /cdn-cgi/l/email-protection,
   which answers 404 to a crawler by design: a false High and a false Critical.

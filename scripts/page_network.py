@@ -2,8 +2,8 @@
 """
 What a rendered page calls over the network, and which of those calls anyone can make.
 
-A raw-HTML crawl sees the page's markup, not the requests its scripts send. On the
-Improvado v4.1 audit, the site's AI sandbox widget sent visitors' questions straight
+A raw-HTML crawl sees the page's markup, not the requests its scripts send. On a
+client audit, the site's AI sandbox widget sent visitors' questions straight
 to a public agent endpoint from the browser, with no key and a CORS policy that let
 any site call it; the crawl-based report saw only the llms.txt line that named the
 endpoint. This script renders each page with Playwright, records every request, and:
@@ -252,7 +252,7 @@ def llms_endpoints(text: str, site: str) -> list:
 def probe_endpoint(url: str, timeout: int = 10) -> dict:
     """GET, then (for anything that is not an HTML page) an OPTIONS preflight from a foreign origin. Never a POST.
 
-    An HTML answer means a page, not an endpoint (Improvado's llms.txt lists /mcp/<source> marketing
+    An HTML answer means a page, not an endpoint (one client's llms.txt lists /mcp/<source> marketing
     pages). A 403 with an HTML body is a server or firewall refusing the method, not an auth check;
     auth is a 401, a WWW-Authenticate header, or a 403 with a non-HTML body.
     """

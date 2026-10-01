@@ -3,7 +3,7 @@
 Generate an interactive SEO report (HTML, XLSX, PDF, or combined).
 
 Runs all analysis scripts and aggregates results into a single,
-self-contained HTML file styled with the Tobto design system (Ledger layout).
+self-contained HTML file styled with the report design system (Ledger layout).
 Optionally exports to Excel (.xlsx) or PDF for offline sharing.
 
 Usage:
@@ -1780,7 +1780,7 @@ def github_annotations(summary: dict) -> list:
 
 
 # ---------------------------------------------------------------------------
-# HTML report view: the Tobto design system in the Ledger layout.
+# HTML report view: the report design system in the Ledger layout.
 #
 # Everything the audited site controls (titles, anchors, URLs, tag values,
 # script findings) is escaped with _esc before it reaches the page. Every

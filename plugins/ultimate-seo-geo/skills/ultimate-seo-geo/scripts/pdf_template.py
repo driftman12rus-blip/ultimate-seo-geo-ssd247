@@ -18,7 +18,7 @@ from typing import Any
 
 from pdf_charts import category_radar, cwv_bars, health_score_gauge, severity_donut
 
-# Colours are Tobto design-system tokens (tokens/colors.css), the same values as
+# Colours are the report design-system tokens (tokens/colors.css), the same values as
 # references/report-template/report.css: -500 hues for fills and borders, -700 steps
 # for type on a soft tint, the ink ladder for neutrals.
 _CSS = r"""

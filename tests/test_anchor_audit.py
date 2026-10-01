@@ -1,7 +1,7 @@
 """internal_links.anchor_audit: anchor text per destination, from in-content links only.
 
 Calibrated on four real graphs (smashingmagazine.com, posthog.com,
-developers.cloudflare.com, balloonbay.us, 40 pages each). Two first-draft
+developers.cloudflare.com, a local-services site, 40 pages each). Two first-draft
 defects became the regression tests below: "Go" naming the Go language was
 called vague, and a "one anchor dominates" finding fired only on template calls
 to action, so it was dropped as a finding.

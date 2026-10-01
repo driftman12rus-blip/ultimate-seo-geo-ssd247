@@ -109,8 +109,8 @@ def test_crux_history_metric_filter_still_applies():
 
 # --- 2-4. gsc_insights human basis --------------------------------------------------
 
-AD_FRAUD = "https://improvado.io/blog/best-ad-fraud-detection-software"
-BLOG = "https://improvado.io/blog/looker-studio"
+AD_FRAUD = "https://acme-analytics.example/blog/best-ad-fraud-detection-software"
+BLOG = "https://acme-analytics.example/blog/looker-studio"
 
 
 def row(query, clicks, impressions, position, page=BLOG):
@@ -118,13 +118,13 @@ def row(query, clicks, impressions, position, page=BLOG):
             "ctr": clicks / impressions if impressions else 0.0, "position": position}
 
 
-SEP = [row("improvado", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
+SEP = [row("acme", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
        row("ad fraud", 1, 191_486, 5.5, AD_FRAUD), row("ad fraud detection software", 0, 237_872, 2.1, AD_FRAUD)]
 
 
 def test_non_human_finding_when_the_previous_window_has_no_rows(capsys):
     # A new property, or a --replay file saved with an empty previous window: position change is None.
-    dataset = {"site_url": "sc-domain:improvado.io", "windows": {"current": ["2026-09-02", "2026-09-15"]},
+    dataset = {"site_url": "sc-domain:acme-analytics.example", "windows": {"current": ["2026-09-02", "2026-09-15"]},
                "query_page": {"rows": SEP}, "query_page_previous": {"rows": []}, "pages": {}}
     out = gi.analyse(dataset, {"human_basis", "topic_spikes"})
     assert out["human_basis"]["change"]["blended"]["position"] is None
@@ -137,7 +137,7 @@ def test_non_human_finding_when_the_previous_window_has_no_rows(capsys):
 
 def test_non_human_finding_when_every_query_is_machine(capsys):
     rows = [row("ad fraud", 1, 191_486, 5.5, AD_FRAUD), row("ad fraud detection software", 0, 237_872, 2.1, AD_FRAUD)]
-    out = gi.analyse({"site_url": "sc-domain:improvado.io", "query_page": {"rows": rows}, "pages": {}}, {"human_basis"})
+    out = gi.analyse({"site_url": "sc-domain:acme-analytics.example", "query_page": {"rows": rows}, "pages": {}}, {"human_basis"})
     assert out["human_basis"]["current"]["human"]["ctr"] is None
     issue = next(i for i in out["issues"] if i["code"] == "non_human_queries")
     assert "human n/a" in issue["evidence"]
@@ -148,7 +148,7 @@ def test_non_human_finding_when_every_query_is_machine(capsys):
 # Blended position improves because a machine query arrives at position 1, while the one
 # human query slips from 5.0 to 6.0. The old ratio (bp - hp) / bp read as 132%.
 WORSE_PREV = [row("looker studio", 40, 10_000, 5.0)]
-WORSE_NOW = [row("looker studio", 40, 10_000, 6.0), row("site:improvado.io looker", 0, 3_000, 1.0)]
+WORSE_NOW = [row("looker studio", 40, 10_000, 6.0), row("site:acme-analytics.example looker", 0, 3_000, 1.0)]
 
 
 def test_human_position_worsened_while_blended_improved_is_not_a_share_over_100():
@@ -169,7 +169,7 @@ def test_human_position_worsened_finding_says_so():
 
 def test_share_of_gain_stays_between_0_and_1_when_human_also_improved():
     prev = [row("looker studio", 40, 10_000, 6.0)]
-    now = [row("looker studio", 40, 10_000, 5.5), row("site:improvado.io looker", 0, 3_000, 1.0)]
+    now = [row("looker studio", 40, 10_000, 5.5), row("site:acme-analytics.example looker", 0, 3_000, 1.0)]
     change = gi.human_basis(now, gi.classify_queries(now), prev)["change"]
     assert 0 <= change["position_gain_from_non_human"] <= 1
     assert "human_position_worsened" not in change
@@ -178,8 +178,8 @@ def test_share_of_gain_stays_between_0_and_1_when_human_also_improved():
 def test_spike_topic_queries_are_set_aside_in_the_previous_window_too(monkeypatch):
     # 'ad tech' passes the per-query rules in both windows; the topic-spike verdict sets it aside.
     # The previous window must lose it as well, or the human basis compares different query sets.
-    prev = [row("improvado", 300, 800, 1.5), row("ad tech", 2, 5_000, 8.0)]
-    now = [row("improvado", 321, 800, 1.5), row("ad tech", 3, 90_000, 4.0)]
+    prev = [row("acme", 300, 800, 1.5), row("ad tech", 2, 5_000, 8.0)]
+    now = [row("acme", 321, 800, 1.5), row("ad tech", 3, 90_000, 4.0)]
     spike = {"verdict": "machine-suspect", "_members": ["ad tech"]}
     monkeypatch.setattr(gi, "topic_spikes", lambda rows, prev_rows, labels, limit=None: {
         "criteria": "", "count": 1, "items": [dict(spike)], "_all": [spike]})
@@ -257,7 +257,7 @@ def api_row(query, clicks, impressions, position):
 
 
 # In click order, as the API returns them: the query with most impressions has few clicks.
-BY_CLICKS = [api_row("improvado", 321, 800, 1.5), api_row("improvado pricing", 90, 1_200, 1.2),
+BY_CLICKS = [api_row("acme", 321, 800, 1.5), api_row("acme pricing", 90, 1_200, 1.2),
              api_row("marketing data warehouse", 4, 61_000, 9.8), api_row("looker studio", 3, 38_056, 7.1)]
 
 
@@ -320,8 +320,8 @@ def test_indexed_though_blocked_is_not_summed_into_blocked_by_robots(tmp_path):
 
 GA4_UI_EXPORT = """# ----------------------------------------
 # Key events
-# Account: Improvado
-# Property: improvado.io - GA4
+# Account: Acme
+# Property: acme-analytics.example - GA4
 # ----------------------------------------
 #
 # All Users

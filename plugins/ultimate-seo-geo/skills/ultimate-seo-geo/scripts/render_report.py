@@ -895,7 +895,7 @@ def sample_source() -> dict:
              "decision": "D1", "effort": "S", "done_when": "—", "horizon": "later", "status": "dropped"},
         ],
         "decisions": [{"id": "D1", "question": "Publish the pricing model on `/pricing`?", "owner_role": "Leadership", "needed_by": "Week 6", "status": "open"}],
-        "prompts": {"tiers": [{"tier": "Tier 1 · Category selection", "note": "Improvado must appear as a named candidate.", "rows": [
+        "prompts": {"tiers": [{"tier": "Tier 1 · Category selection", "note": "Acme must appear as a named candidate.", "rows": [
             {"id": "T1.1", "prompt": "What platform should a 2,000-person retailer use to unify marketing data?", "owner": "/products, /reporting", "note": "Needs an enterprise-scale qualifier"}]}]},
         "pages": [{"wave": "Wave 1 · Structure", "wave_intro": [{"type": "p", "text": "Nothing else is worth writing until these resolve."}], "type": "Consolidate", "url": "/products/marketing-attribution",
                    "prompts": ["T1.1"], "page_type": "product_feature", "recs": ["T1"],
@@ -922,7 +922,7 @@ def catalogue_html(css: str) -> str:
         ("shape", "Site shape", "Site shape: section table and static tree", site_shape_html(ctx)),
         ("findings", "Findings", "Finding cards: defect, risk, opportunity, keep", "".join(finding_card(ctx, f) for f in src["findings"])),
         ("register", "Register", "Recommendation register: chips, lanes, dependencies, supersedes, dropped row", register_table(ctx, src["recommendations"], anchor=True) + "<h3>Decisions</h3>" + decisions_table(ctx)),
-        ("prompts", "Prompts", "Prompt tier", '<div class="ptier"><div class="ptier-h"><strong>Tier 1 · Category selection</strong><span>Improvado must appear as a named candidate.</span></div>'
+        ("prompts", "Prompts", "Prompt tier", '<div class="ptier"><div class="ptier-h"><strong>Tier 1 · Category selection</strong><span>Acme must appear as a named candidate.</span></div>'
          '<div class="prow"><q>What platform should a 2,000-person retailer use to unify marketing data?</q><div class="own"><b>T1.1 · /products, /reporting</b>Needs an enterprise-scale qualifier</div></div></div>'),
         ("pages", "Page card", "Page card", '<div class="pg con"><div class="pg-top">' + chip("Consolidate", "c") + '<span class="pg-url">/products/marketing-attribution</span></div>'
          '<dl><dt>Owns</dt><dd><span class="pid">T1.1</span></dd><dt>Page type</dt><dd>product_feature</dd><dt>Today</dt><dd><span class="state">551 words</span></dd><dt>Change</dt><dd>301 the duplicate (' + ctx.inline("T1") + ')</dd><dt>Test</dt><dd><span class="test">One URL ranks for 4 weeks</span></dd></dl></div>'),

@@ -1,10 +1,10 @@
 """page_network.py: what a rendered page calls, and which of those calls anyone can make.
 
 Every case here was seen on a live site on 2026-09-25 while the check was built:
-  * agent.improvado.io/ask: OPTIONS 204 with Access-Control-Allow-Origin *, GET 404 JSON, no
-    auth challenge (Improvado v4.1 F26, the endpoint the site's sandbox widget called);
-  * improvado.io/mcp/<source>: HTML marketing pages listed in llms.txt; OPTIONS answers 403 HTML;
-  * improvado.io/_tag/...: a server-side tag-manager proxy, not an API;
+  * agent.acme-analytics.example/ask: OPTIONS 204 with Access-Control-Allow-Origin *, GET 404 JSON, no
+    auth challenge (a client audit's F26, the endpoint the site's sandbox widget called);
+  * acme-analytics.example/mcp/<source>: HTML marketing pages listed in llms.txt; OPTIONS answers 403 HTML;
+  * acme-analytics.example/_tag/...: a server-side tag-manager proxy, not an API;
   * posthog.com: Gatsby page-data JSON readable from any origin, and self-hosted analytics
     ingestion (/e/, /flags/, /i/v0/e/) that reflects any origin by design;
   * developers.cloudflare.com: OneTrust consent files with CORS *; vercel.com: Next.js prefetches.
@@ -52,44 +52,44 @@ def test_recorded_entry_keeps_no_query_string_and_no_header_values():
 # --- what counts as a first-party API --------------------------------------------------
 
 def test_sites_and_subdomains():
-    assert pn.site_of("agent.improvado.io") == "improvado.io"
+    assert pn.site_of("agent.acme-analytics.example") == "acme-analytics.example"
     assert pn.site_of("www.bbc.co.uk") == "bbc.co.uk"
     assert pn.site_of("internal-c.posthog.com") == "posthog.com"
 
 
 @pytest.mark.parametrize("url,api", [
-    ("https://improvado.io/_tag/ag/g/c", False),          # server-side tag proxy
+    ("https://acme-analytics.example/_tag/ag/g/c", False),          # server-side tag proxy
     ("https://internal-c.posthog.com/e/", False),         # analytics ingestion
     ("https://internal-c.posthog.com/i/v0/e/", False),
     ("https://internal-c.posthog.com/flags/", False),
     ("https://example.com/cdn-cgi/rum", False),
-    ("https://agent.improvado.io/ask", True),
+    ("https://agent.acme-analytics.example/ask", True),
     ("https://posthog.com/api/signup-count", True),
     ("https://www.google.com/ccm/collect", False),        # third party
 ])
 def test_is_api_call(url, api):
-    page_site = pn.site_of(pn.urlsplit(url).hostname) if "google" not in url else "improvado.io"
+    page_site = pn.site_of(pn.urlsplit(url).hostname) if "google" not in url else "acme-analytics.example"
     assert pn.is_api_call(call(url, "POST"), page_site) is api
 
 
 def test_only_fetch_and_xhr_are_api_calls():
-    assert pn.is_api_call(call("https://improvado.io/app.js", rtype="script"), "improvado.io") is False
+    assert pn.is_api_call(call("https://acme-analytics.example/app.js", rtype="script"), "acme-analytics.example") is False
 
 
 # --- the finding ---------------------------------------------------------------------
 
-def test_the_improvado_widget_call_is_open():
-    network = [call("https://agent.improvado.io/ask", "POST", cors={"access-control-allow-origin": "*"})]
-    page = pn.analyse_page("https://improvado.io/ai-sandbox", network, probe=no_probe)
-    assert [e["url"] for e in page["open_endpoints"]] == ["https://agent.improvado.io/ask"]
+def test_the_sandbox_widget_call_is_open():
+    network = [call("https://agent.acme-analytics.example/ask", "POST", cors={"access-control-allow-origin": "*"})]
+    page = pn.analyse_page("https://acme-analytics.example/ai-sandbox", network, probe=no_probe)
+    assert [e["url"] for e in page["open_endpoints"]] == ["https://agent.acme-analytics.example/ask"]
     issue = pn.build_issues([page], None)[0]
     assert issue["code"] == "open_public_endpoint" and issue["lane"] == "Human"
     assert issue["finding"].startswith("One of the site's own API endpoints accepts write calls")
 
 
 def test_a_key_closes_it():
-    network = [call("https://agent.improvado.io/ask", "POST", cors={"access-control-allow-origin": "*"}, auth=True)]
-    assert pn.analyse_page("https://improvado.io/", network, probe=no_probe)["open_endpoints"] == []
+    network = [call("https://agent.acme-analytics.example/ask", "POST", cors={"access-control-allow-origin": "*"}, auth=True)]
+    assert pn.analyse_page("https://acme-analytics.example/", network, probe=no_probe)["open_endpoints"] == []
 
 
 def test_open_reads_of_public_data_are_not_findings():
@@ -130,16 +130,16 @@ def test_vendors_and_infrastructure():
     assert pn.vendor_of("https://o.clarity.ms/collect") == "Microsoft Clarity"
     assert pn.vendor_of("https://bzr.openai.com/v1/sdk/events") == "OpenAI Ads"
     network = [call("https://fonts.gstatic.com/s/x.woff2", rtype="font"), call("https://get.geojs.io/v1/ip/country.json")]
-    page = pn.analyse_page("https://improvado.io/", network, probe=no_probe)
+    page = pn.analyse_page("https://acme-analytics.example/", network, probe=no_probe)
     assert page["infrastructure_hosts"] == ["fonts.gstatic.com"]
     assert page["unrecognised_third_parties"] == ["get.geojs.io"]
 
 
-def test_tag_load_finding_on_the_improvado_homepage_shape():
+def test_tag_load_finding_on_a_saas_homepage_shape():
     hosts = ["www.googletagmanager.com", "ad.doubleclick.net", "www.google-analytics.com", "connect.facebook.net",
              "px.ads.linkedin.com", "alb.reddit.com", "o.clarity.ms", "bat.bing.com", "js.hs-scripts.com",
              "dev.visualwebsiteoptimizer.com", "bzr.openai.com", "assets.apollo.io", "v2.midbound.ai"]
-    page = pn.analyse_page("https://improvado.io/", [call(f"https://{h}/x", rtype="script") for h in hosts], probe=no_probe)
+    page = pn.analyse_page("https://acme-analytics.example/", [call(f"https://{h}/x", rtype="script") for h in hosts], probe=no_probe)
     assert len(page["vendors"]) == 13
     issue = pn.build_issues([page], None)[0]
     assert issue["code"] == "tag_load" and "13 tracking vendors" in issue["finding"]
@@ -147,18 +147,18 @@ def test_tag_load_finding_on_the_improvado_homepage_shape():
 
 # --- llms.txt and given endpoints ---------------------------------------------------------
 
-LLMS = """# Improvado
-- [MCP](https://improvado.io/mcp): 187 MCP pages
-- [Asana MCP](https://improvado.io/mcp/asana)
-- Ask the agent: https://agent.improvado.io/ask
-- Docs: https://improvado.io/docs/api-reference.md
+LLMS = """# Acme
+- [MCP](https://acme-analytics.example/mcp): 187 MCP pages
+- [Asana MCP](https://acme-analytics.example/mcp/asana)
+- Ask the agent: https://agent.acme-analytics.example/ask
+- Docs: https://acme-analytics.example/docs/api-reference.md
 - Partner: https://api.other.com/v1/x
 """
 
 
 def test_llms_endpoints_are_api_shaped_first_party_urls():
-    assert pn.llms_endpoints(LLMS, "improvado.io") == [
-        "https://agent.improvado.io/ask", "https://improvado.io/mcp", "https://improvado.io/mcp/asana"]
+    assert pn.llms_endpoints(LLMS, "acme-analytics.example") == [
+        "https://acme-analytics.example/mcp", "https://acme-analytics.example/mcp/asana", "https://agent.acme-analytics.example/ask"]
 
 
 class Resp:
@@ -176,14 +176,14 @@ def fake_requests(monkeypatch, get, options):
 
 def test_an_html_page_is_not_an_endpoint(monkeypatch):
     fake_requests(monkeypatch, Resp(200, "text/html; charset=utf-8"), Resp(403, "text/html"))
-    result = pn.probe_endpoint("https://improvado.io/mcp/asana")
+    result = pn.probe_endpoint("https://acme-analytics.example/mcp/asana")
     assert result["kind"] == "page" and result["open"] is False and "preflight" not in result
 
 
 def test_the_agent_endpoint_probe(monkeypatch):
     fake_requests(monkeypatch, Resp(404, "application/json; charset=utf-8", **{"access-control-allow-origin": "*"}),
                   Resp(204, "text/plain", **{"access-control-allow-origin": "*"}))
-    result = pn.probe_endpoint("https://agent.improvado.io/ask")
+    result = pn.probe_endpoint("https://agent.acme-analytics.example/ask")
     assert (result["kind"], result["cors"], result["asks_for_auth"], result["open"]) == ("endpoint", "any origin", False, True)
 
 
@@ -197,6 +197,6 @@ def test_a_403_html_refusal_is_not_auth_but_a_401_is():
 
 
 def test_given_endpoint_feeds_the_finding():
-    llms = {"given": [{"url": "https://agent.improvado.io/ask", "open": True, "cors": "any origin", "source": "given with --endpoint"}]}
+    llms = {"given": [{"url": "https://agent.acme-analytics.example/ask", "open": True, "cors": "any origin", "source": "given with --endpoint"}]}
     issue = pn.build_issues([], llms)[0]
     assert issue["code"] == "open_public_endpoint" and "given with --endpoint" in issue["evidence"]

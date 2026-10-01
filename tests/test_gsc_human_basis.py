@@ -1,6 +1,6 @@
 """gsc_insights.py human basis: which Search Console queries people could not have produced.
 
-Fixture rows are real Improvado query rows (Sep 2-15 and Aug 18-31 2026) from the v4.1
+Fixture rows are real query rows from a B2B SaaS client (Sep 2-15 and Aug 18-31 2026) from the v4.1
 audit. The client's own board found that 88% of the site's apparent position gain in that
 period was machine traffic; before this change, low-CTR advice told the site to rewrite
 titles for queries no person had typed.
@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 import gsc_insights as gi  # noqa: E402
 
-AD_FRAUD = "https://improvado.io/blog/best-ad-fraud-detection-software"
-BLOG = "https://improvado.io/blog/looker-studio"
+AD_FRAUD = "https://acme-analytics.example/blog/best-ad-fraud-detection-software"
+BLOG = "https://acme-analytics.example/blog/looker-studio"
 
 
 def row(query, clicks, impressions, position, page=BLOG):
@@ -32,9 +32,9 @@ def row(query, clicks, impressions, position, page=BLOG):
     ("ad fraud detection software", 0, 237_872, 2.1, "impossible_ctr"),
     ("ad fraud", 1, 191_486, 5.5, "impossible_ctr"),
     ("ad verification software", 0, 107_639, 10.2, "impossible_ctr"),  # page two still has a floor
-    ("site:improvado.io/integrations", 0, 40, 3.0, "search_operator"),
+    ("site:acme-analytics.example/integrations", 0, 40, 3.0, "search_operator"),
     ("http www.seomoz.org rank-tracker", 0, 12, 40.0, "url_in_query"),
-    ('"scott bennett" "improvado" phone fax', 0, 7_810, 5.0, "quoted_template"),
+    ('"scott bennett" "acme" phone fax', 0, 7_810, 5.0, "quoted_template"),
     ('"roku" data governance strategy', 0, 7_441, 9.9, "quoted_template"),
     ("%video marketing trends this month 2025 after:2026-08-14", 0, 30, 8.0, "scraper_syntax"),
 ])
@@ -44,7 +44,7 @@ def test_machine_queries(query, clicks, impressions, position, reason):
 
 
 @pytest.mark.parametrize("query,clicks,impressions,position", [
-    ("improvado", 321, 800, 1.5),
+    ("acme", 321, 800, 1.5),
     ("looker studio", 37, 38_056, 7.1),      # low CTR, but clicks a person can produce at that volume
     ("data quality management", 0, 8_568, 12.4),  # page two, zero clicks: too few impressions to rule out people
     ('"deepseek"', 0, 7, 5.0),               # one quoted word alone is how people search a name
@@ -93,9 +93,9 @@ def test_classification_is_per_query_across_pages():
 
 # --- the human basis -------------------------------------------------------------
 
-AUG = [row("improvado", 401, 772, 1.4), row("looker studio", 40, 30_000, 8.0),
+AUG = [row("acme", 401, 772, 1.4), row("looker studio", 40, 30_000, 8.0),
        row("ad fraud", 2, 10_124, 9.0, AD_FRAUD)]
-SEP = [row("improvado", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
+SEP = [row("acme", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
        row("ad fraud", 1, 191_486, 5.5, AD_FRAUD), row("ad fraud detection software", 0, 237_872, 2.1, AD_FRAUD)]
 
 
@@ -120,7 +120,7 @@ def test_human_basis_without_a_previous_window():
 
 
 def test_non_human_finding_names_the_gain_and_the_pages():
-    dataset = {"site_url": "sc-domain:improvado.io", "windows": {"current": ["2026-09-02", "2026-09-15"]},
+    dataset = {"site_url": "sc-domain:acme-analytics.example", "windows": {"current": ["2026-09-02", "2026-09-15"]},
                "query_page": {"rows": SEP}, "query_page_previous": {"rows": AUG}, "pages": {}}
     out = gi.analyse(dataset, {"human_basis"})
     issue = next(i for i in out["issues"] if i["code"] == "non_human_queries")
@@ -130,8 +130,8 @@ def test_non_human_finding_names_the_gain_and_the_pages():
 
 
 def test_no_finding_when_the_share_is_small():
-    rows = [row("improvado", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
-            row("site:improvado.io", 0, 40, 1.0)]
+    rows = [row("acme", 321, 800, 1.5), row("looker studio", 37, 38_056, 7.1),
+            row("site:acme-analytics.example", 0, 40, 1.0)]
     out = gi.analyse({"query_page": {"rows": rows}, "pages": {}}, {"human_basis"})
     assert not [i for i in out["issues"] if i["code"] == "non_human_queries"]
 

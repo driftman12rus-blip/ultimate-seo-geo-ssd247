@@ -1,11 +1,11 @@
-"""Four false or unsafe findings from a live audit of balloonbay.us (2026-09-29).
+"""Four false or unsafe findings from a live audit of a local-services site (2026-09-29).
 
 1. internal_links.py read only visible text, so a logo link named by its image's
    alt and a card link carrying aria-label were "links with no anchor text"
    (medium), although the finding's own fix says aria-label/alt is the remedy.
    site_graph.py recorded the same visible-text-only anchor for the anchor audit.
 2. image_checker.py took the first <img> in document order as the LCP image. On
-   balloonbay.us that is a 52px decorative header logo (alt="", aria-hidden),
+   party-co.example that is a 52px decorative header logo (alt="", aria-hidden),
    while the hero is preloaded with <link rel=preload as=image fetchpriority=high>.
 3. sitemap_checker.py passed verify=False to requests: TLS certificates were not
    checked, and a failed certificate read as a healthy page.
@@ -32,7 +32,7 @@ import sitemap_checker  # noqa: E402
 import url_safety  # noqa: E402
 from bs4 import BeautifulSoup  # noqa: E402
 
-SITE = "https://balloonbay.us/"
+SITE = "https://party-co.example/"
 
 
 # --- 1. link anchors are the accessible name -----------------------------------
@@ -53,8 +53,8 @@ LINKS_HTML = """<html><body><main>
 
 
 def _anchors():
-    links = internal_links.extract_internal_links(LINKS_HTML, SITE, "balloonbay.us")
-    return {l["url"].replace("https://balloonbay.us", ""): l["anchor_text"] for l in links}
+    links = internal_links.extract_internal_links(LINKS_HTML, SITE, "party-co.example")
+    return {l["url"].replace("https://party-co.example", ""): l["anchor_text"] for l in links}
 
 
 def test_image_alt_and_aria_label_name_a_link():
@@ -86,8 +86,8 @@ def test_accessible_name_order():
 
 
 def test_site_graph_records_the_accessible_name_so_the_anchor_audit_agrees():
-    page = site_graph.extract_page(LINKS_HTML, SITE, "balloonbay.us")
-    anchors = {l["href"].replace("https://balloonbay.us", ""): l["anchor"] for l in page["out_links"]}
+    page = site_graph.extract_page(LINKS_HTML, SITE, "party-co.example")
+    anchors = {l["href"].replace("https://party-co.example", ""): l["anchor"] for l in page["out_links"]}
     assert anchors["/case-studies/intuit/"] == "Intuit"
     assert anchors["/balloon-wall-ideas/"] == "Balloon Wall Ideas: Creative Designs"
     assert [u for u, a in anchors.items() if not internal_links.normalise_anchor(a)] == ["/empty/"]
@@ -129,7 +129,7 @@ def test_a_preload_without_high_priority_does_not_suppress_the_finding():
 
 
 def test_a_large_alt_empty_hero_poster_is_still_the_candidate():
-    # balloonbay.us's real hero is <img alt="" width="1920" height="696" fetchpriority="high">.
+    # a live site's real hero is <img alt="" width="1920" height="696" fetchpriority="high">.
     html = ('<img src="/logo.webp" alt="" aria-hidden="true" width="176" height="176">'
             '<img src="/hero.webp" alt="" width="1920" height="696" loading="lazy">')
     assert any('loading="lazy"' in f for f in _findings(html))
@@ -240,16 +240,16 @@ def test_tls_failures_in_the_sample_become_a_stated_finding(monkeypatch):
 # --- 4. citation claims are sentences in content, not regex hits ------------------
 
 CLAIMS_HTML = """<html><body>
-<header><a href="tel:+16505025077">(650) 502-5077</a> <nav><a href="/report">Report</a></nav></header>
+<header><a href="tel:+15550100199">(555) 010-0199</a> <nav><a href="/report">Report</a></nav></header>
 <main>
   <h1>Balloon decorations in the Bay Area</h1>
-  <p>Balloon Bay has designed balloon decorations since 2019. Call (650) 502-5077 or text 650-502-5077 to book.</p>
+  <p>Party Co has designed balloon decorations since 2019. Call (555) 010-0199 or text 555-010-0199 to book.</p>
   <p>Last updated: September 21, 2026</p>
   <div class="review"><p>Amazing arch for our wedding!</p><time>March 15, 2026</time></div>
   <div class="review"><p>Great team.</p><span>April 2, 2026</span></div>
-  <p>Reach us at <a href="tel:6505025077">650.502.5077</a>.</p>
+  <p>Reach us at <a href="tel:5550100199">555.010.0199</a>.</p>
 </main>
-<footer>&copy; 2026 Balloon Bay. All rights reserved. (650) 502-5077</footer>
+<footer>&copy; 2026 Party Co. All rights reserved. (555) 010-0199</footer>
 </body></html>"""
 
 

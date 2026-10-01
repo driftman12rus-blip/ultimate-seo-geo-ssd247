@@ -1,6 +1,6 @@
 /* Report design system — references/report-template/report.css
    Tokens and components for the client report (report.html) and generate_report.py (report-template.md § 8).
-   Colour, type and radius follow the Tobto design system (tokens/colors.css,
+   Colour, type and radius follow the report design system (tokens/colors.css,
    semantic.css, theme-dark.css, radius.css): brand blue #0057B7 as the accent,
    the ink ladder for neutrals, the -700 semantic steps as type on light and the
    -300 steps on dark, Blaze orange only for opportunity marks (--opp), hairlines

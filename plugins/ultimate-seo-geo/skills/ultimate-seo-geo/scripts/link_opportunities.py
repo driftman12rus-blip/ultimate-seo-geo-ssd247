@@ -55,7 +55,7 @@ MAX_QUERIES = 50
 LINK_MARK = "⁣"   # invisible separator standing in for text that is already a link
 # Prose, not page furniture: breadcrumbs, "Copy as Markdown | ..." bars, card bylines and
 # carousel controls flatten into "sentences" (seen on developers.cloudflare.com,
-# smashingmagazine.com and balloonbay.us). A sentence to put a link in has words.
+# smashingmagazine.com and a local-services site). A sentence to put a link in has words.
 MIN_WORDS = 6
 MAX_EXISTING_LINKS = 2
 MAX_SYMBOLS = 1

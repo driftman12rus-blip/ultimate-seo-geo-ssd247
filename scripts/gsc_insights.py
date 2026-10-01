@@ -81,7 +81,7 @@ DECAY_MIN_CLICKS = 30
 DECAY_MIN_DROP = 0.20
 DEFAULT_LIMIT = 25
 
-# Machine-query classifier (human_basis). Calibrated on 28,768 Improvado query rows
+# Machine-query classifier (human_basis). Calibrated on 28,768 query rows from a B2B SaaS client
 # (18 Aug-15 Sep 2026): every rule's rows together earned 8 clicks on 1.19M impressions.
 HUMAN_CTR_FLOOR = ((3.0, 0.002), (10.0, 0.001), (20.0, 0.0005))  # (max position, lowest plausible human CTR)
 IMPOSSIBLE_MIN_IMPRESSIONS = 500
@@ -90,7 +90,7 @@ AGENT_MIN_WORDS = 12
 
 # Topic spikes. A query spikes when it has SPIKE_QUERY_MIN impressions now and at least
 # SPIKE_GROWTH times the previous window; spiking queries are grouped by the term that covers
-# the most impressions, then clusters are merged when either's top term is among the other's top four. On Improvado
+# the most impressions, then clusters are merged when either's top term is among the other's top four. On one client
 # (Aug 18-31 vs Sep 2-15 2026) this finds the ad-fraud topic (1.7k -> 948k impressions, 1
 # click) and a real news topic (0 -> 13k impressions, 268 clicks) that no per-query rule sees.
 SPIKE_QUERY_MIN = 20

@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Run a full SEO audit on psybear.co — it's a psilocybin mushroom strain guide and harm reduction blog. Our traffic has been flat for 6 months and we want to understand why. Give us a health score, top findings, and a prioritized action plan.",
+      "prompt": "Run a full SEO audit on mushroom-guide.example — it's a psilocybin mushroom strain guide and harm reduction blog. Our traffic has been flat for 6 months and we want to understand why. Give us a health score, top findings, and a prioritized action plan.",
       "expected_output": "Mode 1 full audit with SEO Health Score (0-100), findings in Finding/Evidence/Impact/Fix/Confidence format, E-E-A-T assessment noting health/YMYL sensitivity, technical checks, schema assessment, and a prioritized Mode 2 action plan table with effort/impact columns.",
       "files": [],
       "assertions": [

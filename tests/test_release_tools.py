@@ -23,7 +23,7 @@ applied to the last renderer that still carried its own palette, no new capabili
 
 ## [1.18.0] - 2026-09-18
 
-The report set adopts the Tobto design system.
+The report set adopts the report design system.
 
 ### Changed
 - tokens
@@ -40,7 +40,7 @@ def test_versions_are_listed_newest_first_and_unreleased_is_skipped():
 
 def test_section_returns_the_body_without_heading():
     body = rt.changelog_section(CHANGELOG, "1.18.0")
-    assert body.startswith("The report set adopts the Tobto design system.")
+    assert body.startswith("The report set adopts the report design system.")
     assert "### Changed\n- tokens" in body
     assert "1.17.0" not in body
 

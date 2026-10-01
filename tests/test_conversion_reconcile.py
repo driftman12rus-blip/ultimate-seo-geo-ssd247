@@ -1,11 +1,11 @@
 """conversion_reconcile.py: demo requests on two rulers, GA4 events and clean CRM people.
 
 No CRM export ships with the repo, so the end-to-end fixture is generated. Its shape
-follows what Improvado measured and published in its verification of report v4.1
+follows what a client measured and published in its verification of report v4.1
 (22 Sep 2026): 552 distinct clean business people asked for a demo in June-August 2025
 and 591 in 2026 (+7%); GA4 organic demo events went 460 -> 257 (-44%); a spam burst of
 627 submissions on 27 July was followed by 140, 151, 126 and 113 (1,157 in five days);
-the team's own test submissions came from improvado.io addresses and from localhost and
+the team's own test submissions came from acme-analytics.example addresses and from localhost and
 pr-*.amplifyapp.com pages. The fixture reproduces those totals, not the private rows.
 """
 
@@ -41,7 +41,7 @@ def month_days(month):
 def fixture_rows():
     rows = []
     for month, people in PEOPLE.items():
-        # Improvado's published count leaves 27-31 July 2026 out whole, so the fixture's real people
+        # The client's published count leaves 27-31 July 2026 out whole, so the fixture's real people
         # submit on the other days; a real submission on a burst day is set aside with the spam.
         days = [d for d in month_days(month) if d not in SPAM]
         for i in range(people):
@@ -49,20 +49,20 @@ def fixture_rows():
             email = f"buyer{i}@company{month.replace('-', '')}-{i}.com"
             source = "ORGANIC_SEARCH" if i % 3 == 0 else "PAID_SEARCH"
             stage = "salesqualifiedlead" if i % 4 == 0 else "lead"
-            host = "https://improvado.io/register/talk-to-an-expert" if i % 5 else "https://lp.improvado.io/demo"
+            host = "https://acme-analytics.example/register/talk-to-an-expert" if i % 5 else "https://lp.acme-analytics.example/demo"
             rows.append([day.isoformat() + " 10:00", email, host, "Demo request", source, stage])
             if i % 10 == 0:  # a real person submitting twice
                 rows.append([day.isoformat() + " 10:05", email.upper(), host, "Demo request", source, stage])
         if month.startswith("2026"):
             for i, day in enumerate(days):
                 # the team testing on production, and on developer and preview hosts
-                rows.append([day.isoformat() + " 12:00", f"qa{i % 4}@improvado.io", "https://improvado.io/register/talk-to-an-expert", "Demo request", "DIRECT_TRAFFIC", "lead"])
+                rows.append([day.isoformat() + " 12:00", f"qa{i % 4}@acme-analytics.example", "https://acme-analytics.example/register/talk-to-an-expert", "Demo request", "DIRECT_TRAFFIC", "lead"])
                 rows.append([day.isoformat() + " 12:30", f"dev{i}@testmail-company.com", "http://localhost:3000/register/talk-to-an-expert", "Demo request", "DIRECT_TRAFFIC", "lead"])
                 rows.append([day.isoformat() + " 13:00", f"pr{i}@testmail-company.com", "https://pr-1453.d2x7abc.amplifyapp.com/register", "Demo request", "DIRECT_TRAFFIC", "lead"])
     for day, count in SPAM.items():
         for i in range(count):
             domain = "gmail.com" if i % 2 else "taomail.kdns.fr"
-            rows.append([day.isoformat() + "T03:00:00Z", f"bot{day.day}-{i}@{domain}", "https://improvado.io/register/talk-to-an-expert",
+            rows.append([day.isoformat() + "T03:00:00Z", f"bot{day.day}-{i}@{domain}", "https://acme-analytics.example/register/talk-to-an-expert",
                          "Demo request", "OFFLINE", "lead"])
     return rows
 
@@ -87,14 +87,14 @@ def exports(tmp_path):
 
 def run(crm, ga4, *extra):
     cmd = [sys.executable, os.path.join(SCRIPTS, "conversion_reconcile.py"), "--crm", str(crm), "--ga4", str(ga4),
-           "--ga4-channel", "Organic Search", "--production-host", "improvado.io", "--production-host", "lp.improvado.io",
-           "--internal-domain", "improvado.io", "--business-only", "--compare", "2025-06:2025-08,2026-06:2026-08", "--json", *extra]
+           "--ga4-channel", "Organic Search", "--production-host", "acme-analytics.example", "--production-host", "lp.acme-analytics.example",
+           "--internal-domain", "acme-analytics.example", "--business-only", "--compare", "2025-06:2025-08,2026-06:2026-08", "--json", *extra]
     out = subprocess.run(cmd, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr + out.stdout
     return json.loads(out.stdout)
 
 
-# --- end to end: the Improvado shape ----------------------------------------------
+# --- end to end: the client's shape ----------------------------------------------
 
 def test_clean_people_rise_while_ga4_organic_falls(exports):
     result = run(*exports)
