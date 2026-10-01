@@ -219,7 +219,7 @@ def analyze_html(html: str, base_url: str) -> dict:
             issues.append({
                 "severity": "info",
                 "finding": f"Very short alt text: {img.get('alt')!r}",
-                "fix": "Use descriptive alt text (10–125 chars) for meaningful images.",
+                "fix": "For meaningful images, use concise descriptive alt text that fits the image context; decorative images should use alt=\"\".",
             })
 
     pct_missing_alt = round(100 * missing_alt / total, 1) if total else 0.0
@@ -228,7 +228,7 @@ def analyze_html(html: str, base_url: str) -> dict:
         issues.append({
             "severity": "high" if pct_missing_alt > 25 else "warning",
             "finding": f"{missing_alt}/{total} images missing alt attribute ({pct_missing_alt}%).",
-            "fix": "Add descriptive alt text (10–125 chars) for content images; use alt=\"\" only for decorative images.",
+            "fix": "Add useful contextual alt text for meaningful images; use alt=\"\" for decorative images. There is no SEO character-count target.",
         })
 
     # --- LCP image signals ---
@@ -324,8 +324,8 @@ def analyze_html(html: str, base_url: str) -> dict:
     if raster_srcs:
         issues.append({
             "severity": "info",
-            "finding": f"{len(raster_srcs)} image(s) served as JPEG/PNG instead of WebP.",
-            "fix": "Convert to WebP format. WebP is typically 25–35% smaller than JPEG/PNG at equivalent quality.",
+            "finding": f"{len(raster_srcs)} image URL(s) use JPEG/PNG extensions; transferred format was not measured.",
+            "fix": "Optimize actual delivered bytes and dimensions. JPEG/PNG/WebP/AVIF are all valid; on Shopify/CDNs the URL extension may differ from the negotiated format.",
         })
 
     # --- Score ---
@@ -348,13 +348,11 @@ def analyze_html(html: str, base_url: str) -> dict:
             deductions += 20
         if missing_dimensions > total // 2:
             deductions += 10
-        if raster_srcs:
-            deductions += 5
         score = max(0, 100 - deductions)
 
     recs = []
     if pct_missing_alt > 10:
-        recs.append("See references/image-seo.md for alt text, WebP conversion, and srcset guidance.")
+        recs.append("See references/image-seo.md for contextual alt text and responsive-image guidance.")
     if any(i["severity"] == "critical" for i in lcp_issues):
         recs.append("Fix lazy-loading on the hero/LCP image immediately — it directly delays Core Web Vitals.")
 
