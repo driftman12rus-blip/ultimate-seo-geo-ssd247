@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
@@ -102,6 +103,11 @@ def analyze_html(html: str, url: str = "") -> dict:
     lower = text.lower()
     words = re.findall(r"[A-Za-z][A-Za-z'-]*", text)
     word_count = len(words)
+    path = urlparse(url).path.lower() if url else ""
+    commerce_page = (
+        "/products/" in path
+        or bool(soup.select_one('form[action*="/cart/add"], button[name="add"], [data-product-id]'))
+    )
     filler_hits = [phrase for phrase in FILLER_PHRASES if phrase in lower]
     author_present = bool(
         soup.select_one('[rel="author"], .author, .byline, [class*="author"], [itemprop="author"]')
@@ -123,13 +129,8 @@ def analyze_html(html: str, url: str = "") -> dict:
     recommendations = []
     score = 100
 
-    if word_count < 300:
-        score -= 20
-        issues.append({
-            "severity": "warning",
-            "finding": "Page has very little extractable main content",
-            "fix": "Add useful first-hand detail, examples, proof, or task-completion copy where appropriate.",
-        })
+    # Word count is descriptive only. Google has no minimum word count, and
+    # product/collection pages should not be padded to satisfy an arbitrary floor.
     if filler_hits:
         score -= min(25, len(filler_hits) * 5)
         issues.append({
@@ -138,35 +139,34 @@ def analyze_html(html: str, url: str = "") -> dict:
             "fix": "Replace generic phrasing with specific observations, concrete examples, and source-backed claims.",
         })
         recommendations.append("Rewrite generic filler phrases into specific, experience-backed statements.")
-    if claim_count and citation_gap:
+    if claim_count and citation_gap and not commerce_page:
         score -= min(25, citation_gap * 3)
         issues.append({
             "severity": "warning",
-            "finding": f"{citation_gap} claim(s) appear to need stronger citation support",
+            "finding": f"{citation_gap} editorial claim(s) may need stronger source support",
             "evidence": (f"{claim_count} sentence(s) state a figure, study or source; {len(outbound_sources)} "
                          "outbound link(s) on the page. For example: "
                          + " | ".join(f"\"{_clip(c)}\"" for c in claims[:CLAIM_EXAMPLES])),
-            "fix": "Add primary-source links near statistics, dates, studies, or market claims.",
+            "fix": "On editorial content, add primary-source links near statistics, studies, or market claims. Product specifications do not require editorial citations solely because they contain numbers.",
         })
-    if not author_present:
-        score -= 10
+    if not commerce_page and not author_present:
         issues.append({
             "severity": "info",
             "finding": "No clear author/byline signal detected",
-            "fix": "Add author or reviewer attribution on editorial content where relevant.",
+            "fix": "Add author or reviewer attribution on editorial content where it helps users assess expertise.",
         })
-    if not date_present:
-        score -= 5
+    if not commerce_page and not date_present:
         issues.append({
             "severity": "info",
             "finding": "No publication or updated date detected",
-            "fix": "Add visible publication or updated dates for informational content.",
+            "fix": "Add visible publication or updated dates for time-sensitive informational content where relevant.",
         })
 
     return {
         "url": url,
         "score": max(0, score),
         "word_count": word_count,
+        "commerce_page": commerce_page,
         "filler_phrases": filler_hits,
         "claim_count": claim_count,
         "claim_examples": [_clip(c) for c in claims[:CLAIM_EXAMPLES]],
