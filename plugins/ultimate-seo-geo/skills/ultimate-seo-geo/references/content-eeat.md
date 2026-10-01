@@ -42,12 +42,12 @@ These are **coverage floors**, not optimization targets. Google has confirmed wo
 
 ### Title Tag
 - Primary keyword in title
-- Under 60 characters (prevents truncation in SERPs)
+- Clear and descriptive; displayed title links can be shortened depending on query/device
 - Compelling — includes value proposition or emotional hook
 - Unique across all pages
 
 ### Meta Description
-- 150-160 characters
+- Concise and useful; Google has no fixed meta-description character limit
 - Includes primary keyword naturally
 - Clear value proposition with CTA implied
 - Unique per page
@@ -60,13 +60,13 @@ These are **coverage floors**, not optimization targets. Google has confirmed wo
 - Question-based headings where appropriate (boosts AI citability)
 
 ### Keyword Optimization
-- Primary keyword in H1, first 100 words of body
+- Use natural terminology that matches the topic; do not force exact placement quotas
 - Semantic variations and related terms used naturally throughout
 - No keyword stuffing (density > 3-4% is a warning sign)
 - LSI keywords / related terms: check competitor content for vocabulary to include
 
 ### Internal Linking
-- 3-5 relevant internal links per 1,000 words
+- Add relevant internal links where they help users and discovery; no per-word quota
 - Descriptive anchor text (not "click here" or "read more")
 - Links to topically related content (pillar → cluster and cluster → pillar)
 - No orphan pages (every page has at least one internal link pointing to it)
@@ -81,7 +81,7 @@ These are **coverage floors**, not optimization targets. Google has confirmed wo
 
 ## AI Citation Readiness
 
-**44.2% of AI citations come from the first 30% of content.** Front-loading answers is the highest-leverage writing change.
+Some studies observe more AI citations from earlier page sections. Use answer placement as an experiment, not a universal rule or guaranteed highest-leverage change.
 
 ### Answer-First Structure
 
@@ -96,9 +96,9 @@ Avoid: "In this article, we will explore..." preambles that bury the answer.
 
 | Signal | Strong | Weak |
 |---|---|---|
-| **Passage length** | 134-167 words (optimal for extraction) | Walls of text (500+ word paragraphs) |
-| **Answer placement** | Direct answer in first 40-60 words of each section | Answer buried 200+ words in |
-| **Fact density** | 5-8 statistics/citations per article (+40% AI visibility) | Vague claims without supporting data |
+| **Passage shape** | Self-contained and easy to understand; no fixed word target | Dense walls of text when they hinder comprehension |
+| **Answer placement** | Put answers where readers can find them quickly | Avoid unnecessary preamble when it harms usefulness |
+| **Fact quality** | Use relevant, verifiable facts and primary sources when claims need support | Do not add statistics to satisfy a quota |
 | **Quotability** | Clear, standalone sentences with specific claims | Opinion-heavy, context-dependent statements |
 | **Definition patterns** | "X is...", "X refers to...", "X means..." | Assumed knowledge, no clear definition |
 
@@ -137,7 +137,7 @@ Add a FAQ section at the end of long-form posts (especially for GEO):
 - Flag content older than 12 months for fast-changing topics (technical, industry news, statistics)
 - Update key statistics annually — stale numbers reduce AI citability
 
-**GEO impact:** Content updated within 2 months receives 28% more AI citations than older content. ChatGPT particularly penalizes stale information.
+**GEO research note:** some studies correlate freshness with citations. Refresh genuinely time-sensitive facts; do not claim ChatGPT applies a fixed stale-content penalty.
 
 ### What "Meaningfully Revised" Means
 
@@ -242,7 +242,7 @@ Steps:
 3. **Merge weaker pages into stronger page:**
    - Extract unique sections/data from weaker pages
    - Integrate into stronger page under appropriate headings
-   - Expand weak page from 1,500 words to 2,500+ words with consolidated content
+   - Expand only the missing substance needed to satisfy intent; no target word count
 4. **Create 301 redirects** for all merged pages → consolidated page
 5. **Update internal links:** relink all pages that linked to old URLs to the new consolidated page
 6. **Update external references:** outreach to high-authority external sites linking to old URLs; request link update (optional but high-value)
@@ -266,7 +266,7 @@ When search intent is primarily **informational** and users want a quick, direct
 - **Example:** Query: "What is product-led growth?" — a crisp 500-word page with answer-first structure beats a 2,500-word article that buries the definition
 
 **Structure for informational queries:**
-1. **Direct answer in 40-60 words** (first paragraph)
+1. **Direct answer early when useful** (no fixed word count)
 2. **2-3 supporting details** (next 200-300 words)
 3. **FAQ section** with 3-5 common follow-ups
 4. **Done** — no need to pad for length
@@ -279,7 +279,7 @@ When the topic is **highly competitive** or users need **comprehensive, in-depth
 - **Example:** Query: "How to implement a product-led growth strategy?" — a 2,000+ word guide with answer-first structure (answer in first paragraph, then step-by-step details) outranks shorter articles
 
 **Structure for comprehensive/competitive queries:**
-1. **Direct answer in 50-100 words** (first paragraph/section)
+1. **Direct answer early when useful** (no fixed word count)
 2. **Expand with 5-8 main sections** (step-by-step, detailed examples, case studies)
 3. **Support with statistics, data, and original insights** (1,800-2,500 total words)
 4. **Internal links** to related pillar/cluster content
@@ -297,7 +297,7 @@ Before writing:
 ### Key Takeaway
 
 **Answer-first is non-negotiable; depth is situational.**
-- Always lead with the answer (first 40-100 words)
+- Lead with the answer when that best serves the query; no fixed placement cutoff
 - Expand only if competitive landscape or search intent demands comprehensiveness
 - Never pad word count for ranking purposes — match answer depth to user need
 
@@ -342,7 +342,7 @@ These are guidelines, not ranking factors:
 - **Compression**: use modern compression (no unnecessarily large files)
 - **Dimensions**: specify `width` and `height` attributes to prevent CLS
 - **Lazy loading**: `loading="lazy"` for below-the-fold images
-- **Featured/hero images**: always present for GEO (multi-modal signal)
+- **Featured/hero images**: use when they help users; not a GEO requirement
 
 ---
 
