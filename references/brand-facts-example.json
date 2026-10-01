@@ -8,7 +8,9 @@
     {"field": "headquarters", "type": "place", "value": "Austin", "aliases": ["Austin, Texas", "Austin, TX"], "source": "https://acme.example/about"},
     {"field": "founders", "type": "people", "value": ["Jane Doe", "Raj Patel"], "source": "https://acme.example/about"},
     {"field": "pricing", "type": "money", "value": [0, 29, 99], "source": "https://acme.example/pricing"},
-    {"field": "free plan", "type": "claim", "value": true, "true_phrases": ["free plan", "free tier"], "source": "https://acme.example/pricing"}
+    {"field": "price (enterprise)", "type": "money", "value": [25000], "context": ["enterprise", "SSO", "annual contract"], "source": "https://acme.example/pricing#enterprise"},
+    {"field": "free plan", "type": "claim", "value": true, "true_phrases": ["free plan", "free tier"], "source": "https://acme.example/pricing"},
+    {"field": "G2 rating", "type": "rating", "value": 4.6, "count": 310, "source": "https://www.g2.com/products/acme-analytics/reviews"}
   ],
   "false_claims": [
     {"phrase": "acquired by", "source": "https://acme.example/about"},

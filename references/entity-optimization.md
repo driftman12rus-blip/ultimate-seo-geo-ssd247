@@ -243,6 +243,9 @@ gap this test exists to find.
 | Name collision with similar entity | Geographic/industry/product qualifiers; ensure Schema @id is unique; prioritize Wikidata disambiguation |
 | Abbreviation/acronym conflict | Prefer full name in structured data; use abbreviation only in established contexts |
 | Merged or renamed entity | Redirect old entity signals; update all structured data; create "formerly known as" content; update Wikidata |
+| Same-market competitor with a similar name; its rating or reviews shown under yours | Name the other business explicitly in a "not affiliated" Q&A on the brand facts page (`ai-search-geo.md` § Brand Facts Page). Generic qualifiers don't separate two businesses that differ by one word in the same city. List it in the facts JSON `others` so `citation_sampling.py --facts` doesn't count its sentences as yours, and add a `rating` fact to catch its rating under your name. Confirm the owner is OK naming the competitor. |
+| Namesake in another place (a town name shared with a better-known one: Saratoga, CA vs Saratoga Springs, NY) | State the full locality with state, county and ZIP, and say plainly which place it is **not**. Check Wikidata P131 (located in) and the Google Business Profile address. |
+| Service-area business given an invented street address | State "no storefront or public office, in {city} or anywhere else", and describe any real pickup arrangement precisely. Fix the location anchor too: the GBP service area and Wikidata P131. An on-site page alone only partly fixes this. |
 
 ---
 

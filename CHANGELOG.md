@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.22.0] - 2026-10-01
+
+From the balloonbay.us AI facts page work (2026-10-01). The monthly AI visibility panel showed
+Google AI Mode and ChatGPT giving a same-market competitor's 4.8/106 rating under the brand's name,
+placing the business in Saratoga Springs, NY rather than Saratoga, CA, inventing a street address for a
+service-area business, and quoting corporate buyers the $200 private-event price rather than the $800
+corporate minimum. The facts check could detect the first and last only partly, and the skill had no
+guidance on the fix. Minor per D-020: a new fact type and a new optional facts-file key.
+
+### Added
+- **Segment-scoped facts in `citation_sampling.py --facts`.** A fact may carry `"context"` terms,
+  e.g. `{"field": "price (corporate)", "type": "money", "value": [800], "context": ["corporate",
+  "office party"]}`. It is judged in sentences that use a term, and in any sentence of an answer
+  whose prompt uses one, unless that sentence names another scoped fact's term. Unscoped facts of
+  the same type leave those sentences to the scoped fact. A corporate prompt answered with the
+  private price is now wrong, where it used to read as an official price. Findings for a scoped fact
+  give the segment in the fix and the falsifiability line.
+- **`rating` fact type.** `{"type": "rating", "value": 5.0, "count": 40}` reads "4.8 stars",
+  "4.8/5", "4.8 out of 5", "4.8-star rating", "rated 4.8" and the review count after it. A rating
+  more than 0.05 off, or a count more than 25% off, is wrong. "5-star service" is not a rating.
+- **Money keywords** now include "start at", "minimum", "package" and "packages".
+- **`references/brand-facts-example.json`** gains an enterprise-scoped price and a G2 rating, and a
+  test now loads it so it can't fall out of step with the validator.
+- **Brand Facts Page** section in `references/ai-search-geo.md`: one crawlable HTML page as the fix
+  for wrong-fact findings. Statements, not commands to AI ("AI must" wording is flagged as weak);
+  corrections as FAQPage Q&A that name the brand; prices by segment; one data source for the page
+  and llms.txt; About page, llms.txt and sitemap links, then GSC live test and Request Indexing; an
+  honest note that GBP and knowledge-graph errors are only partly fixed on-site; measure with the
+  next ≥5-run panel. Also a line in GEO Medium Effort.
+- **Three disambiguation rows** in `references/entity-optimization.md`: a same-market competitor with
+  a similar name, a namesake in another place, and a service-area business given an invented address.
+- **llms.txt notes that dodge the question** ("pricing is custom; call us") leave the model to pick a
+  number: state starting prices per segment, and link the facts page.
+- **GSC Request Indexing steps** in `references/crawl-indexation.md`: the order (inspect, TEST LIVE
+  URL, REQUEST INDEXING), and why a hand-built `inspect?...&id=<URL>` deep link returns a 404.
+- **Eval 17**: wrong brand facts in AI answers and an "AI instructions" page request, with a fixture.
+
+### Fixed
+- **A competitor whose name contains the brand's was read as the brand.** With brand "Balloon Bay",
+  "Bloom Balloon Bay Area has a 4.8 rating" counted as a statement about Balloon Bay even when the
+  competitor was listed in `others`. A brand mention inside a listed competitor's longer name now
+  belongs to the competitor.
+
 ## [1.21.3] - 2026-09-29
 
 1.21.2 let the image check reach balloonbay.us's real hero, and it then asked that hero for a
