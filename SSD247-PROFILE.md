@@ -83,6 +83,57 @@ For broad audits:
 
 Generic findings must be translated into Shopify/Xtra implementation language before execution. A recommendation such as "edit the page template" is not complete until the relevant Shopify surface is identified (theme template/section, product data, collection data, navigation, metafield, structured-data snippet, Shopify setting, or app output).
 
+### 7. Titles, descriptions and headings
+
+Do not turn SERP-display heuristics into SEO defects.
+
+- A missing or misleading `<title>` is a real on-page issue.
+- Title character counts such as 50–60 or 60–65 are display heuristics only. Google title links are not governed by a fixed character limit.
+- A missing meta description is an optimization opportunity, not a ranking failure; Google can generate snippets from page content.
+- There is no fixed meta-description character limit. Length may be reported as a snippet/display note only.
+- Multiple H1 elements are not, by themselves, a Google SEO error. Evaluate whether the main visual/page heading is clear and whether heading semantics are sensible for accessibility and users.
+- Do not require exact H1→H2→H3 ordering for Google rankings; treat heading order as accessibility/content-structure guidance.
+
+### 8. Images
+
+- Do not require WebP. JPEG, PNG, WebP and AVIF are all valid supported formats; optimize actual bytes, dimensions and delivery rather than file extension alone.
+- On Shopify/CDN URLs, the extension does not prove the transferred format because content negotiation/transformation may serve a different format.
+- Do not use an arbitrary 10–125 character alt-text rule. Alt text should be useful, concise and contextual for meaningful images; decorative images should use `alt=""`.
+- Missing alt attributes, lazy-loading of a confirmed LCP image, and measured CLS/image-size problems remain actionable.
+- `srcset`, `sizes`, width/height attributes and fetchpriority are implementation tools, not universal requirements; flag only when the observed delivery/layout makes them relevant.
+
+### 9. Duplicate content and canonicals
+
+- Do not use the phrase "duplicate content penalty" for normal same-site duplication.
+- Text-similarity percentages (including 85%) are triage signals, not proof that pages should be merged, noindexed or canonicalized.
+- Non-self canonicals and multiple URLs sharing a canonical can be intentional. Escalate only when the canonical conflicts with intended indexation or Google/GSC behavior.
+- A canonical hint is not mandatory for Google to index a page, though self-referencing canonicals are useful hygiene on Shopify indexable pages.
+- Do not combine a robots.txt block with a new `noindex` recommendation for the same URL pattern: Google must be able to crawl a URL to see `noindex`.
+
+### 10. GEO / AI-search evidence standard
+
+Treat GEO optimization as an experimental layer, not as a set of Google ranking requirements.
+
+- Do not require an answer in the first 40–60 words.
+- Do not require 134–167-word answer blocks.
+- Do not require Reddit, YouTube, Wikipedia, Wikidata, author bylines or publication dates on product/collection pages.
+- Do not present exact citation multipliers, correlations, passage-length "sweet spots", freshness multipliers, or channel-presence percentages as guaranteed effects.
+- Citability, passage structure, brand/entity presence and AI-crawler access may be measured and tested, but they must be labeled as diagnostics/experiments unless backed by platform documentation for the exact behavior claimed.
+- A GEO score is an internal comparison metric, not a Google/ChatGPT/Perplexity score and not a ranking probability.
+- For SSD247, prioritize product facts, price/availability consistency, crawlability, indexation, useful comparisons/specifications and measurable AI citation sampling over generic publishing heuristics.
+
+### 11. Prioritization
+
+Do not prioritize work only because it lowers the repository's internal Health Score. Separate findings into:
+
+- search/indexation impact;
+- Merchant Center / structured-data eligibility;
+- user/performance/accessibility impact;
+- GEO experiment;
+- hygiene / informational.
+
+Security headers, Open Graph/Twitter metadata, IndexNow support, exact text lengths, social-platform presence and similar hygiene items must not be described as Google ranking factors unless there is direct evidence for that claim.
+
 ## Precedence
 
 When this file conflicts with a generic rule in `AGENTS.md`, `SKILL.md`, `references/`, or a script's narrative recommendation, this SSD247 profile wins. Keep upstream diagnostic capabilities where useful, but do not restore the excluded heuristic thresholds during upstream sync.
