@@ -64,7 +64,7 @@ How often Google wants to crawl a URL based on:
 |---|---|---|
 | Printer-friendly / PDF versions | Duplicate content with `?print=1` | Canonical → original page |
 | Sort order variants | `/products?sort=price_asc` | Canonical → canonical product listing |
-| Near-duplicate location pages | 50 city pages with < 10% unique content | Unique local content or consolidate with geo-targeting |
+| Near-duplicate location pages | Many pages appear to serve the same intent with little real local distinction | Validate demand/value and consolidate or differentiate when evidence supports it |
 | Old subdomain content | `old.site.com` still crawlable | 301 redirect or block |
 | Dev/API endpoints crawlable | `/api/v2/products.json` in index | `noindex` or robots.txt block |
 
@@ -407,7 +407,7 @@ For sites serving multiple languages or regions.
 ```
 
 **Rules:**
-- Always include `x-default` hreflang for the default/fallback version
+- Consider `x-default` when a genuine fallback/selector URL exists; Google recommends it but does not require it on every set
 - Every page in the cluster must reference all other pages (reciprocal)
 - Use ISO 639-1 language codes (en, fr, de) and optionally ISO 3166-1 region codes (en-GB, fr-CA)
 - Can also implement via XML sitemap or HTTP headers
