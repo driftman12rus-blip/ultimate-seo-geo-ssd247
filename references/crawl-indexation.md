@@ -50,11 +50,11 @@ How often Google wants to crawl a URL based on:
 
 | Issue | Detection | Fix |
 |---|---|---|
-| Faceted navigation URLs | Crawl site, count `/color=red&size=M` style URLs | `noindex` or canonical → master category |
-| Paginated archive pages | Pages like `/blog/page/47` | Noindex paginated pages OR canonical all to page 1 (if content is largely duplicate) |
+| Faceted navigation URLs | Measure URL growth, crawl demand, duplication and search value | Choose robots.txt, crawlable `noindex`, canonicalization, or indexable landing pages per pattern; do not apply one blanket rule |
+| Paginated archive pages | Pages like `/blog/page/47` | Keep crawlable links through the series; do not automatically canonicalize all pages to page 1 if page content/items differ |
 | Session IDs / tracking parameters | URLs with `?utm_source=`, `?sessionid=` | Canonical to canonical URL. **The GSC URL Parameters tool was removed on April 28, 2022** — do not send anyone there. Google handles parameters automatically; control them with canonicals, `robots.txt` patterns, and internal linking |
-| Thin tag / category pages | `/tag/red/`, `/category/all/` pages with < 300 words and no unique value | Noindex or consolidate |
-| Infinite scroll artifacts | Dynamic `?page=2`, `?offset=100` URLs | Proper pagination with `rel=next`/`prev` is deprecated — use view-all + canonical instead |
+| Low-value tag / category pages | Pages with no distinct intent/value or persistent indexing problems | Improve, consolidate, noindex, or remove based on evidence; word count alone is not the trigger |
+| Infinite scroll artifacts | Dynamic `?page=2`, `?offset=100` URLs | Ensure crawlable paginated URLs/links where needed; canonicalize only true duplicates, not every page in a series |
 | Duplicate HTTP/HTTPS or www/non-www | Four versions of homepage | 301 redirect all to a single canonical, and self-reference that canonical. **The GSC preferred-domain setting was retired in 2019** — redirects and canonicals are the only signals available |
 | Staging site crawlable | Staging URLs in search results | Block with robots.txt on staging; add noindex meta; do NOT rely on robots.txt alone |
 
@@ -170,10 +170,10 @@ Is this the primary URL for this content?
 | www vs. non-www | `http://www.site.com/page` | Canonical → `https://site.com/page` + 301 redirect |
 | HTTP vs. HTTPS | `http://site.com/page` | 301 redirect to HTTPS + canonical on HTTPS page |
 | Trailing slash variants | `/page` and `/page/` | Pick one, 301 the other, canonical = chosen version |
-| Faceted navigation | `/shoes?color=red&size=8` | Canonical → `/shoes/` (master category) |
+| Faceted navigation | `/shoes?color=red&size=8` | Decide by pattern: block crawl, use crawlable noindex, canonicalize true duplicates, or keep valuable filters indexable |
 | Syndicated content | Your article on third-party site | Third-party page should canonical → your original |
-| Paginated series | `/blog/page/2` | Options: (a) Noindex + canonical → page 1; (b) Noindex paginated, keep page 1 indexed |
-| URL parameters | `/page?ref=newsletter` | Canonical → clean URL; configure in GSC params tool |
+| Paginated series | `/blog/page/2` | Keep each page crawlable when it exposes distinct items; avoid blanket canonical-to-page-1 rules |
+| URL parameters | `/page?ref=newsletter` | Tracking-only duplicates can canonicalize to the clean URL; classify other parameters before deciding |
 
 ### Canonical Conflicts to Avoid
 
@@ -286,7 +286,7 @@ python scripts/ai_bot_logs.py access.log access.log.1.gz --verify-ips --json
 6. **GSC "Alternate page with proper canonical"**: Run `scripts/canonical_checker.py --crawl` to find pages where the canonical tag points to a different URL. Google treats these as duplicates. If the page has unique content, change canonical to self-referencing. If truly duplicate, 301 redirect.
 7. **Sitemap submitted vs. indexed ratio**: > 20% gap between submitted and indexed = quality issue
 6. **"Crawled - not indexed" cluster**: Group by page type — if blog posts dominate, content quality audit needed
-7. **Search/template URL hygiene**: Check sitemap for search result URLs (`?q=`, `?search=`, `{search_term_string}`) and faceted/filtered URLs. These must be removed from sitemap and marked noindex.
+7. **Search/template URL hygiene**: keep utility URLs that should not be indexed out of sitemaps. Use crawlable `noindex` when de-indexation is needed, or robots.txt when the goal is long-term crawl suppression; do not rely on both simultaneously.
 
 ### Indexation Ratio Benchmarks
 
@@ -317,8 +317,8 @@ When Google Search Console reports pages as "Not found (404)" under Page Indexin
 |---|---|---|
 | **Content moved** | 301 redirect to new URL; update sitemap; fix internal links | Critical |
 | **Content deleted** | Return 404 or 410; remove from sitemap; remove all internal links to it | High |
-| **Search/template URL** | Remove from sitemap; add `<meta name="robots" content="noindex">` to all search result pages; add `Disallow: /search` to robots.txt | Critical |
-| **Faceted URL** | Remove from sitemap; canonical → master category; consider noindex | High |
+| **Search/template URL** | Remove from sitemap; choose crawlable `noindex` for de-indexation OR robots.txt for long-term crawl suppression | High |
+| **Faceted URL** | Remove from sitemap unless intentionally indexable; decide robots/noindex/canonical/indexable treatment by pattern and demand | Review |
 | **External link typo** | If high-authority link, 301 redirect to correct page; otherwise let 404 stand | Medium |
 | **Page should exist** | Fix the application bug; restore the page; ensure 200 response | Critical |
 
@@ -372,7 +372,7 @@ When GSC reports pages as "Alternate page with proper canonical tag" under Page 
 
 **Step 2: Apply fixes for unintentional alternates**
 - Change canonical to self-referencing on pages with unique content
-- Differentiate content if pages are too similar (>85% similarity)
+- Differentiate or consolidate only when pages genuinely serve the same intent; similarity percentage is a diagnostic, not a decision rule
 - Fix CMS/theme canonical configuration if mass-misconfigured
 - If page is truly duplicate: 301 redirect to canonical target (stronger signal)
 
