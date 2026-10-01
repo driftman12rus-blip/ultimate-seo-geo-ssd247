@@ -32,11 +32,11 @@ except ImportError:
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-pSEOAudit/1.8)"
 HEADERS = {"User-Agent": USER_AGENT}
 
-THIN_WORD_COUNT = 300
-BOILERPLATE_HIGH = 70  # >70% boilerplate = red flag
-BOILERPLATE_WARN = 60
-UNIQUENESS_HARD_STOP = 30  # <30% unique = scaled content abuse
-UNIQUENESS_WARN = 40       # <40% unique = thin content risk
+THIN_WORD_COUNT = 300  # descriptive diagnostic only; not a defect threshold
+BOILERPLATE_HIGH = 70   # descriptive diagnostic only
+BOILERPLATE_WARN = 60   # descriptive diagnostic only
+UNIQUENESS_HARD_STOP = 30  # descriptive diagnostic only
+UNIQUENESS_WARN = 40       # descriptive diagnostic only
 MIN_PATTERN_SIZE = 3       # need ≥3 pages to consider it a pattern group
 
 
@@ -303,7 +303,9 @@ def audit_pattern_group(pattern: str, pages_data: list) -> dict:
         "recommendations": [],
     }
 
-    # 1. Word counts
+    # 1. Word counts + 2. boilerplate / measured uniqueness
+    # These are descriptive diagnostics only. Fixed word-count or uniqueness
+    # percentages are not SEO violations by themselves.
     word_counts = [p["word_count"] for p in pages_data]
     avg_wc = sum(word_counts) / max(1, len(word_counts))
     thin_pages = [p["url"] for p in pages_data if p["word_count"] < THIN_WORD_COUNT]
@@ -311,63 +313,27 @@ def audit_pattern_group(pattern: str, pages_data: list) -> dict:
         "average": round(avg_wc),
         "min": min(word_counts),
         "max": max(word_counts),
-        "thin_count": len(thin_pages),
-        "thin_pages": thin_pages[:10],
+        "below_diagnostic_threshold_count": len(thin_pages),
+        "below_diagnostic_threshold_pages": thin_pages[:10],
+        "diagnostic_only": True,
     }
 
-    if len(thin_pages) > 0:
-        pct = len(thin_pages) / len(pages_data) * 100
-        severity = "critical" if pct > 50 else "warning"
-        result["issues"].append({
-            "severity": severity,
-            "finding": f"{len(thin_pages)}/{len(pages_data)} pages ({pct:.0f}%) have <{THIN_WORD_COUNT} words.",
-            "fix": f"Expand content to ≥{THIN_WORD_COUNT} words of substantive, unique content per page, or noindex thin pages.",
-        })
-
-    # 2. Boilerplate / uniqueness
     bp_data = _compute_boilerplate(pages_data)
     if bp_data:
         avg_unique = sum(v["unique_pct"] for v in bp_data.values()) / len(bp_data)
-        hard_stop_pages = [u for u, v in bp_data.items() if v["unique_pct"] < UNIQUENESS_HARD_STOP]
-        warn_pages = [u for u, v in bp_data.items()
+        lower_unique = [u for u, v in bp_data.items() if v["unique_pct"] < UNIQUENESS_HARD_STOP]
+        mid_unique = [u for u, v in bp_data.items()
                       if UNIQUENESS_HARD_STOP <= v["unique_pct"] < UNIQUENESS_WARN]
-
         result["content_uniqueness"] = {
             "avg_unique_pct": round(avg_unique, 1),
             "avg_boilerplate_pct": round(100 - avg_unique, 1),
-            "hard_stop_count": len(hard_stop_pages),
-            "warning_count": len(warn_pages),
-            "hard_stop_pages": hard_stop_pages[:10],
-            "warning_pages": warn_pages[:10],
+            "below_30_pct_count": len(lower_unique),
+            "between_30_40_pct_count": len(mid_unique),
+            "below_30_pct_pages": lower_unique[:10],
+            "between_30_40_pct_pages": mid_unique[:10],
+            "diagnostic_only": True,
+            "note": "Measured text similarity is not an SEO defect by itself; validate intent, duplication, indexation and usefulness before escalating.",
         }
-
-        if hard_stop_pages:
-            result["issues"].append({
-                "severity": "critical",
-                "finding": (
-                    f"{len(hard_stop_pages)} page(s) have <{UNIQUENESS_HARD_STOP}% unique "
-                    f"content — scaled content abuse territory."
-                ),
-                "fix": "Add genuinely unique per-page content (local data, specific facts, "
-                       "unique analysis) or remove these pages.",
-            })
-        if warn_pages:
-            result["issues"].append({
-                "severity": "warning",
-                "finding": (
-                    f"{len(warn_pages)} page(s) have {UNIQUENESS_HARD_STOP}-{UNIQUENESS_WARN}% "
-                    f"unique content — thin content risk."
-                ),
-                "fix": "Strengthen content differentiation. Each page needs ≥3 unique data "
-                       "fields beyond simple variable substitution.",
-            })
-
-        if avg_unique < UNIQUENESS_WARN:
-            result["recommendations"].append(
-                f"Average uniqueness is only {avg_unique:.0f}% across this pattern group. "
-                f"Consider adding page-specific data, local stats, unique descriptions, "
-                f"or user-generated content to differentiate pages."
-            )
 
     # 3. Title uniqueness
     title_data = _check_title_uniqueness(pages_data)
