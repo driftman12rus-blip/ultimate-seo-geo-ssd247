@@ -51,15 +51,15 @@ There is one Health Score: the one `generate_report.py` computes. It is the weig
 
 | Category | Weight | Checks |
 |---|---|---|
-| Technical SEO | 32% | security, robots, broken_links, canonical, hreflang, redirects, sitemap, indexnow_probe (robots scores crawl rules only: a readable file, a declared sitemap, Googlebot and Bingbot not blocked) |
-| Content quality / E-E-A-T | 18% | readability, content_quality, duplicate_content, programmatic_seo |
-| On-page SEO | 11% | onpage, social |
-| Link authority | 11% | internal_links, link_profile |
-| Core Web Vitals | 10% | pagespeed |
-| AI search readiness (GEO) | 10% | ai_search_access, entity (ai_search_access is the share of AI search crawlers robots.txt lets fetch the site; llms.txt, AI crawler firewall, hidden-instruction and citability checks are shown but not weighted) |
-| Schema / structured data | 4% | schema_validation |
-| Images | 2% | image_seo |
-| Local SEO | 2% | local_signals (only for local businesses) |
+| Technical SEO | 31% | robots, broken_links, canonical, hreflang, redirects, sitemap (security headers and IndexNow are shown but not weighted) |
+| Content quality / E-E-A-T | 14% | content_quality, duplicate_content, programmatic_seo (readability is shown but not weighted) |
+| On-page SEO | 10% | onpage (social preview metadata is shown but not weighted) |
+| Link authority | 14% | internal_links, link_profile |
+| Core Web Vitals | 12% | pagespeed |
+| AI search readiness (GEO) | 8% | ai_search_access (entity/Wikipedia/Wikidata, llms.txt, firewall probe, hidden-instruction and citability panels are shown but not weighted) |
+| Schema / structured data | 5% | schema_validation |
+| Images | 3% | image_seo |
+| Local SEO | 3% | local_signals (only for local businesses) |
 
 A check that errors, is rate-limited, or does not apply drops out, and the other categories' shares grow. Report the actual shares from `group_scores[].share`, not this table. The weights live in `CHECK_WEIGHTS` in `scripts/generate_report.py`; `tests/test_health_score_contract.py` fails if this table drifts from them.
 
