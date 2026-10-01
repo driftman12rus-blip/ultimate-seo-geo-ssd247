@@ -439,16 +439,18 @@ never a defect.
 
 ---
 
-## GEO Quick Wins (High Impact, Low Effort)
+## GEO Experiments / Quick Checks
 
-1. Add "What is [topic]?" definition in first 60 words of each post
-2. Create 134-167 word self-contained answer blocks at start of each H2 section
-3. Convert paragraph-heavy sections to Q&A format headings
-4. Include 5-8 statistics with source attribution per article (40% AI visibility boost)
-5. Add publication date AND last-updated date to every post
-6. Ensure AI crawlers (GPTBot, OAI-SearchBot, PerplexityBot) are allowed in robots.txt
-7. Create author bio page with credentials, LinkedIn link, and external mentions
-8. Add Article/BlogPosting JSON-LD schema to all posts
+Use these as hypotheses only where they fit the page type:
+
+1. Make the primary answer or product fact easy to find without unnecessary preamble.
+2. Break genuinely hard-to-read prose into self-contained sections; do not target a fixed word count.
+3. Use tables or comparisons when they improve product/category decisions.
+4. Cite primary sources for editorial statistics or research claims; ordinary product specifications do not need artificial editorial citations.
+5. Keep time-sensitive facts current; do not change dates merely to appear fresh.
+6. For ChatGPT Search visibility, allow OAI-SearchBot on pages you want surfaced. GPTBot is an independent training-control choice.
+7. Add author/reviewer information on editorial or YMYL content where it helps users assess expertise; it is not a product-page requirement.
+8. Use documented structured data that matches visible content and feed/product facts.
 
 ## GEO Medium Effort
 
@@ -461,19 +463,19 @@ never a defect.
 7. When AI answers state wrong facts about the brand, publish one crawlable brand facts page and point the facts check at it (see [Brand facts page](#brand-facts-page-the-fix-for-wrong-facts))
 8. Create `/llms.txt` — **non-Google engines only**; Google Search ignores it (June 2026). Rank it last: it earns no Google visibility and no platform has confirmed it influences citation selection.
 
-## GEO High Impact
+## Higher-effort GEO experiments
 
-1. Create original research/survey ("State of [Industry] 2026") — most-cited content type
-2. Build YouTube channel with educational content on your core topics
-3. Establish Wikipedia presence for brand and key people
-4. Develop interactive tools or calculators
-5. Achieve 32,000+ referring domains (3.5× citation probability threshold)
+1. Publish original research or genuinely useful comparison data when SSD247 can contribute something unavailable elsewhere.
+2. Create video or interactive content only where customers benefit from it.
+3. Maintain accurate third-party/entity profiles where independently justified; do not create Wikipedia/Wikidata entries solely for SEO.
+4. Build useful tools or calculators where they solve a real buying/compatibility problem.
+5. Grow legitimate authority and mentions through useful work; there is no referring-domain threshold that guarantees AI citations.
 
 ---
 
 ## Brand Mention Strategy (Full Correlation Data)
 
-Ahrefs/75k brand study: brand mention correlation with AI citations = **0.664** vs. backlinks = **0.218**. Brand mentions are 3× more powerful than backlinks for AI citation.
+An Ahrefs brand study reported a higher correlation between brand mentions and AI citations than between backlinks and citations. Keep the original study values as research context only; they do not establish causation or a universal 3× effect.
 
 **Priority channels (highest to lowest correlation):**
 
@@ -485,13 +487,13 @@ Ahrefs/75k brand study: brand mention correlation with AI citations = **0.664** 
 | **LinkedIn articles** | Medium | Thought leadership from author profiles |
 | **G2, Trustpilot, Capterra** | Medium | Third-party review profiles |
 
-For each channel with zero presence, create a plan to establish it. YouTube and Reddit drive the highest AI citation correlation — prioritize first.
+Do not create a channel merely because it is absent. Prioritize only channels that fit SSD247's customers and can produce genuine useful content; then measure whether citation/brand-fact outcomes change.
 
 ## Wikipedia & Wikidata Entity Setup (Full Steps)
 
 Wikipedia and Wikidata presence correlates strongly with AI citations — both ChatGPT and Perplexity pull heavily from Wikipedia.
 
-1. **Check Wikidata first** — Search wikidata.org for the brand. If no entry: create a Wikidata stub (brand name, type, founding date, website, official social links). Takes under an hour and alone can improve AI citation likelihood.
+1. **Check Wikidata only when entity disambiguation is relevant** — verify any existing entry for accuracy. Create or edit an entry only when it meets Wikidata's own inclusion/data rules; do not create one solely to chase AI citations.
 2. **Assess Wikipedia notability** — Wikipedia requires substantial coverage in 3+ independent, reliable sources with editorial standards (not press releases or self-published content).
 3. **If notable** — Create a Wikipedia article with neutral tone, citing only independent reliable sources. No promotional language — it will be deleted.
 4. **If not yet notable** — Earn 3+ substantial independent citations in publications with editorial standards. Once met, revisit Wikipedia.
@@ -499,13 +501,13 @@ Wikipedia and Wikidata presence correlates strongly with AI citations — both C
 
 ## Passage Indexing Optimization
 
-Google Passage Indexing (active since 2021) ranks individual passages independently from the full page. It's also the primary mechanism for AI citation of specific answers — both systems prefer the same structure.
+Google's passage ranking system helps Search understand the relevance of individual sections within a page. It does not mean passages are independently indexed pages, and Google does not document it as the primary mechanism for third-party AI citations.
 
-**Rules for passage-optimized content:**
-1. Each H2 block should be **self-contained** — answers one clear question without requiring context from other sections.
-2. **Optimal passage length: 100–200 words per block** — sweet spot for both Passage Indexing and AI citation (confirmed citability range: 134–167 words).
-3. **No pronoun-heavy openings** — never start a section with "It" or "This" referring to a previous section. Start with the full subject ("Email marketing automation is...").
-4. **Question → Direct Answer structure** — question-phrased H2/H3 immediately followed by a direct answer in the first sentence.
+**Useful writing practices to test:**
+1. Make sections understandable in context and avoid unnecessary ambiguity.
+2. Use the length needed to answer the question; there is no platform-documented 100–200 or 134–167 word requirement.
+3. Repeat the subject when it improves clarity, but natural pronouns are not an SEO defect.
+4. Use question/direct-answer structure when it matches user intent; do not force every heading into that format.
 
 | Scenario | Google Behavior |
 |---|---|
@@ -545,7 +547,7 @@ Empirical data from Princeton's Generative Engine Optimization study on specific
 | **Fluency optimization** | +15–30% | Improve readability and natural flow |
 | ~~Keyword stuffing~~ | **-10%** | **Actively hurts AI visibility** |
 
-**Best combination**: Fluency + Statistics = maximum visibility boost. Low-ranking sites benefit disproportionately — up to **115% visibility increase** when adding citations to previously uncited content.
+These experiment results come from a particular GEO research setup. They can suggest test ideas (clear writing, sourced claims), but the percentages are not expected uplift for a live commerce site and should not be used in forecasts.
 
 ---
 
@@ -563,7 +565,7 @@ Which content types get cited most by AI systems:
 | **How-to guides** | ~8% | Step-by-step structure matches procedural queries |
 | **Opinion / analysis** | ~10% | Expert perspective, quotable conclusions |
 
-**Implication**: If you only create one new content type for GEO, create a comparison article — they receive 1/3 of all AI citations.
+**Interpretation**: citation shares vary by dataset, query mix and engine. For SSD247, choose content types from actual customer/search demand; comparison content is useful only when it answers a real buying decision.
 
 ---
 
