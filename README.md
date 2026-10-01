@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-compatible-blue)](https://agents.md)
-[![Version](https://img.shields.io/badge/version-1.21.3-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.22.0-green.svg)](CHANGELOG.md)
 [![LLM-Agnostic](https://img.shields.io/badge/LLM--Agnostic-7%2B%20platforms-purple.svg)](#platform-compatibility)
 
 The definitive SEO and Generative Engine Optimization agent for AI coding tools. LLM-agnostic — works on any platform that reads `AGENTS.md`. Runs full site audits with scored findings, generates ready-to-deploy fixes, and optimizes content for both Google Search and AI search engines (Google AI Overviews, AI Mode, ChatGPT Search, Perplexity). Exports HTML, Excel, and PDF reports.
@@ -250,7 +250,7 @@ ultimate-seo-geo/
 │   ├── pdf_template.py       Professional A4 PDF template
 │   ├── ...and 43 more
 │
-└── evals/                 ← 16 scenarios, 69 assertions + golden fixtures
+└── evals/                 ← 17 scenarios, 74 assertions + golden fixtures
     ├── evals.json
     └── fixtures/
 ```
@@ -364,7 +364,7 @@ In CI, `--format none --json seo-summary.json --fail-under 70 --fail-on critical
 
 ## Eval Results
 
-Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **16** prompts, **69** assertions):
+Benchmarked against baseline (no skill) across multiple scenarios (see `evals/evals.json`; **17** prompts, **74** assertions):
 
 | Metric | With Skill | Without Skill | Delta |
 |---|---|---|---|
@@ -374,7 +374,7 @@ Benchmarked against baseline (no skill) across multiple scenarios (see `evals/ev
 
 The skill adds ~50 seconds and ~19K tokens per task, but achieves 100% on structured output requirements (finding format, correct schema types, health scoring) where the baseline misses.
 
-**Test scenarios include:** YMYL publisher audit, local HVAC + schema, SaaS schema, migration plan, recipe content (no URL), negative PPC, news/paywall, scoped robots+sitemap-only, international hreflang, pre-launch strategy (no live site), traffic drop routing, GEO platform routing, execute mode risk gate (robots.txt), evaluator-optimizer fabrication check. **Automated check:** `python scripts/score_eval_transcript.py --all-fixtures`.
+**Test scenarios include:** YMYL publisher audit, local HVAC + schema, SaaS schema, migration plan, recipe content (no URL), negative PPC, news/paywall, scoped robots+sitemap-only, international hreflang, pre-launch strategy (no live site), traffic drop routing, GEO platform routing, execute mode risk gate (robots.txt), evaluator-optimizer fabrication check, wrong brand facts in AI answers (facts page, segment prices). **Automated check:** `python scripts/score_eval_transcript.py --all-fixtures`.
 
 ---
 

@@ -30,6 +30,18 @@ the brand are read, and a value counts only when it closely follows its keyword
 do not name the brand, or with another listed brand between the brand and the
 keyword, is left out. What it cannot read, it does not judge: a fact the answer
 states through a pronoun ("It was founded in...") counts as not stated.
+A brand name inside a listed competitor's longer name ("Bloom Balloon Bay
+Area" for brand "Balloon Bay") is the competitor, not the brand.
+
+Segment-scoped facts: a fact with "context" terms (e.g. a corporate price with
+["corporate", "office party"]) is judged only in sentences that use one of the
+terms, or in any sentence of an answer whose prompt uses one, unless that
+sentence names another segment's term. A corporate prompt answered with the
+private-event price is then wrong. Unscoped facts of the same type leave those
+sentences to the scoped fact.
+
+Ratings: a "rating" fact (value, optional review "count") catches another
+business's star rating stated under the brand's name.
 
 Verdicts use a 95% Wilson score interval on the citation rate:
   cited in most runs      lower bound above 50%
@@ -246,9 +258,9 @@ FACT_KEYWORDS = {
     "place": ("headquartered", "headquarters", "based in", "hq", "located in", "offices in"),
     "people": ("co-founded", "cofounded", "founded", "co-founder", "cofounder", "founder", "created", "started"),
     "money": ("price", "pricing", "costs", "cost", "starts at", "starting at", "per month", "/month", "a month",
-              "per user", "plan", "plans", "subscription"),
+              "per user", "plan", "plans", "subscription", "start at", "minimum", "package", "packages"),
 }
-FACT_TYPES = ("year", "place", "people", "money", "claim")
+FACT_TYPES = ("year", "place", "people", "money", "claim", "rating")
 VALUE_WINDOW = 60  # characters after a keyword in which its value must appear
 YEAR_RE = re.compile(r"\b(1[89]\d{2}|20\d{2})\b")
 MONEY_RE = re.compile(r"(?:[$€£]\s?(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s?(?:USD|EUR|GBP|dollars))", re.I)
@@ -260,6 +272,14 @@ OPENER_MAX = 15  # "Originally founded in 2016, Acme ...": a keyword may open th
 PEOPLE_VERBS = ("co-founded", "cofounded", "founded", "created", "started")  # names follow "by"
 PRONOUN_OPENER = re.compile(r"^(?:It|Its|It's|The company|The company's|The platform|The tool|The startup)\b")
 SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])|\n+")
+# "4.8 stars", "4.8/5", "4.8 out of 5", "4.8-star rating", "4.8 rating"; "5-star service" is not a rating.
+RATING_RE = re.compile(
+    r"(?<![\d.])([1-5](?:\.\d{1,2})?)(?:\s*/\s*5(?:\.0)?(?![\d.])|\s+out of (?:5|five)\b|\s*stars\b"
+    r"|\s*-?\s*star (?:rating|average)\b|\s*★|\s+(?:average\s+)?(?:star\s+)?rating\b)", re.I)
+RATED_RE = re.compile(r"\b(?:rated|rating of|average rating of|average of)\s+([1-5](?:\.\d{1,2})?)(?![\d.%])", re.I)
+REVIEW_COUNT_RE = re.compile(r"(?<![\d.])(\d[\d,]*)\+?\s+(?:[A-Za-z]+\s+){0,2}reviews?\b", re.I)
+RATING_TOLERANCE = 0.05  # 4.85 rounds to 4.9; anything further off is another rating
+COUNT_TOLERANCE = 0.25  # review counts grow: a stated count within 25% of the file's count matches
 
 
 def load_facts(path: str) -> dict:
@@ -274,11 +294,21 @@ def load_facts(path: str) -> dict:
     for i, fact in enumerate(facts):
         if not isinstance(fact, dict) or fact.get("type") not in FACT_TYPES or not fact.get("field"):
             raise ValueError(f"{path}: fact {i + 1} needs \"field\" and a \"type\" of {', '.join(FACT_TYPES)}")
+        context = fact.get("context")
+        if context is not None and (not isinstance(context, list) or not context
+                                    or not all(isinstance(t, str) and t.strip() for t in context)):
+            raise ValueError(f"{path}: fact \"{fact['field']}\" has a \"context\" that is not a list of terms")
         if fact["type"] == "claim":
             if not isinstance(fact.get("value"), bool) or not (fact.get("true_phrases") or fact.get("false_phrases")):
                 raise ValueError(f"{path}: claim \"{fact['field']}\" needs a true/false \"value\" and true_phrases or false_phrases")
         elif fact.get("value") in (None, "", []):
             raise ValueError(f"{path}: fact \"{fact['field']}\" has no \"value\"")
+        elif fact["type"] == "rating":
+            values = fact["value"] if isinstance(fact["value"], list) else [fact["value"]]
+            count = fact.get("count")
+            if (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and 0 < v <= 5 for v in values)
+                    or (count is not None and (not isinstance(count, int) or isinstance(count, bool) or count < 1))):
+                raise ValueError(f"{path}: rating \"{fact['field']}\" needs a \"value\" from 0 to 5 and a whole-number \"count\" if given")
     return data
 
 
@@ -287,7 +317,22 @@ def _names(data: dict) -> list:
 
 
 def _find(text: str, phrase: str):
-    return re.search(r"(?<![\w])" + re.escape(phrase) + r"(?![\w])", text, re.I)
+    return re.search(_word(phrase), text, re.I)
+
+
+def _word(phrase: str) -> str:
+    return r"(?<![\w])" + re.escape(phrase) + r"(?![\w])"
+
+
+def _mentions(text: str, names: list, others=()) -> list:
+    """Brand mentions in text, leaving out those inside a listed competitor's longer name.
+
+    "Bloom Balloon Bay Area" contains "Balloon Bay"; when it is listed in `others`,
+    that is the competitor, not the brand.
+    """
+    taken = [(m.start(), m.end()) for o in others for m in re.finditer(_word(o), text, re.I)]
+    return [m for n in names for m in re.finditer(_word(n), text, re.I)
+            if not any(s <= m.start() and m.end() <= e and (s, e) != (m.start(), m.end()) for s, e in taken)]
 
 
 def brand_sentences(answer: str, names: list, others=()) -> list:
@@ -301,7 +346,7 @@ def brand_sentences(answer: str, names: list, others=()) -> list:
     parts = [x.strip() for x in SENTENCE_RE.split(answer or "") if x.strip()]
     out = []
     for i, sentence in enumerate(parts):
-        if any(_find(sentence, n) for n in names):
+        if _mentions(sentence, names, others):
             out.append((sentence, sentence))
             continue
         # Only straight after a sentence already read as the brand's (which may itself be a
@@ -323,9 +368,9 @@ def _attached(sentence: str, start: int, names: list, others: list) -> bool:
     if open_paren > sentence.rfind(")", 0, start):
         close = sentence.find(")", start)
         inside = sentence[open_paren:close if close != -1 else len(sentence)]
-        if not any(_find(inside, n) for n in names):
+        if not _mentions(inside, names, others):
             return False
-    before = [m.end() for n in names for m in re.finditer(r"(?<![\w])" + re.escape(n) + r"(?![\w])", sentence[:start], re.I)]
+    before = [m.end() for m in _mentions(sentence, names, others) if m.end() <= start]
     if not before:
         # The brand comes later: only an opening phrase ("Founded in 2016, Acme ...") is about it.
         # "Unlike Amplitude, which is based in San Francisco, Acme ..." is not.
@@ -339,10 +384,48 @@ def _amount(text: str) -> float:
     return float(text.replace(",", ""))
 
 
+def _rating_statements(fact: dict, sentences: list, names: list, others: list) -> list:
+    official = fact["value"] if isinstance(fact["value"], list) else [fact["value"]]
+    count = fact.get("count")
+    out = []
+    for sentence, quote in sentences:
+        m = RATING_RE.search(sentence) or RATED_RE.search(sentence)
+        if not m or not _attached(sentence, m.start(), names, others):
+            continue
+        stated = float(m.group(1))
+        ok = any(abs(stated - float(v)) <= RATING_TOLERANCE for v in official)
+        text = f"{stated:g}"
+        # The review count usually follows the rating: "4.8 stars from 106 reviews", "(4.8, 106 reviews)".
+        window = sentence[m.end():m.end() + VALUE_WINDOW]
+        stops = [x.start() for x in [WINDOW_STOP.search(window), *(_find(window, o) for o in others)] if x]
+        n = REVIEW_COUNT_RE.search(window[:min(stops)] if stops else window)
+        if n:
+            stated_count = int(n.group(1).replace(",", ""))
+            text += f" ({stated_count} reviews)"
+            if count and abs(stated_count - count) > COUNT_TOLERANCE * count:
+                ok = False
+        out.append(("correct" if ok else "wrong", quote, text))
+    return out
+
+
+def in_scope(fact: dict, sentence: str, prompt: str, foreign=()) -> bool:
+    """Does this sentence speak to a segment-scoped fact (one with "context" terms)?
+
+    Yes when the sentence uses one of the fact's terms, or when the prompt does and
+    the sentence names no other segment's term.
+    """
+    terms = fact.get("context") or []
+    if any(_find(sentence, t) for t in terms):
+        return True
+    return any(_find(prompt or "", t) for t in terms) and not any(_find(sentence, t) for t in foreign)
+
+
 def check_fact(fact: dict, sentences: list, names: list, others: list) -> list:
     """[(status, sentence, stated)] for every statement of this fact; status is correct or wrong."""
     kind = fact["type"]
     out = []
+    if kind == "rating":
+        return _rating_statements(fact, sentences, names, others)
     if kind == "claim":
         for sentence, quote in sentences:
             false_hit = next((p for p in fact.get("false_phrases") or [] if _find(sentence, p)), None)
@@ -403,6 +486,10 @@ def check_brand_facts(rows, data: dict) -> dict:
         if phrase:
             facts.append({"field": f"false claim: {phrase}", "type": "claim", "value": False, "true_phrases": [phrase],
                           "source": None if isinstance(claim, str) else claim.get("source")})
+    # Segment scoping: each scoped fact's rival terms, and which scoped facts an unscoped one defers to.
+    scoped = [f for f in facts if f.get("context")]
+    foreign = {id(f): [t for g in scoped if g is not f and g["type"] == f["type"] for t in g["context"]] for f in scoped}
+    defer_to = {id(f): [g for g in scoped if g["type"] == f["type"]] for f in facts if not f.get("context")}
     answered, naming = 0, 0
     tally = {f["field"]: {"stated": 0, "correct": 0, "wrong": 0, "by_engine": defaultdict(lambda: [0, 0]), "wrong_examples": []}
              for f in facts}
@@ -416,8 +503,14 @@ def check_brand_facts(rows, data: dict) -> dict:
             continue
         naming += 1
         engine = (row.get("engine") or "").strip().lower() or "unknown"
+        prompt = row.get("prompt") or ""
         for fact in facts:
-            results = check_fact(fact, sentences, names, others)
+            if fact.get("context"):
+                pool = [s for s in sentences if in_scope(fact, s[0], prompt, foreign[id(fact)])]
+            else:
+                pool = [s for s in sentences
+                        if not any(in_scope(g, s[0], prompt, foreign[id(g)]) for g in defer_to[id(fact)])]
+            results = check_fact(fact, pool, names, others)
             if not results:
                 continue
             t = tally[fact["field"]]
@@ -460,8 +553,7 @@ def check_brand_facts(rows, data: dict) -> dict:
             "fix": (f"State the fact plainly and early on {where} (one sentence, e.g. \"{data['brand']} {_fact_sentence(fact)}\"), "
                     f"then correct {profiles}. Re-run the same prompts in a month."),
             "confidence": "Hypothesis" if fact["type"] == "money" else "Likely",
-            "falsifiability": ("Wrong if the quoted sentence is about another product or an older plan; read the example before editing."
-                               if fact["type"] == "money" else "Wrong if the quoted sentence is about another company."),
+            "falsifiability": _falsifiability(fact),
             "leading_indicator": f"Wrong-answer rate for {fact['field']} on the same prompts, one month after the fix.",
             "lane": "Human",
         })
@@ -474,18 +566,31 @@ def check_brand_facts(rows, data: dict) -> dict:
         "limits": [
             "Only sentences that name the brand are read; a fact stated through a pronoun counts as not stated.",
             "A price differs from the official list when the answer quotes an old or regional plan; money findings are hypotheses until read.",
+            "A fact with context terms is judged only where the sentence or the prompt uses one; a segment the answer never names is not checked.",
             "Answers without an answer column are skipped: paste the whole answer text to have it checked.",
         ],
     }
+
+
+def _falsifiability(fact: dict) -> str:
+    if fact.get("context"):
+        return ("Wrong if the quoted sentence is about another segment than "
+                f"{fact['context'][0]}; read the prompt and the sentence before editing.")
+    return {
+        "money": "Wrong if the quoted sentence is about another product or an older plan; read the example before editing.",
+        "rating": "Wrong if the quoted rating is from a platform the facts file does not list; check which profile it matches.",
+    }.get(fact["type"], "Wrong if the quoted sentence is about another company.")
 
 
 def _fact_sentence(fact: dict) -> str:
     value = fact.get("value")
     if isinstance(value, list):
         value = ", ".join(str(v) for v in value)
+    segment = f" for {fact['context'][0]} bookings" if fact.get("context") else ""
+    reviews = f" from {fact['count']} reviews" if fact.get("count") else ""
     return {"year": f"was founded in {value}", "place": f"is headquartered in {value}", "people": f"was founded by {value}",
-            "money": f"starts at {value}", "claim": f"{'has' if value else 'does not have'} a {fact['field']}"}.get(
-        fact["type"], f"{fact['field']}: {value}")
+            "money": f"starts at {value}{segment}", "claim": f"{'has' if value else 'does not have'} a {fact['field']}",
+            "rating": f"is rated {value}{reviews}"}.get(fact["type"], f"{fact['field']}: {value}")
 
 
 def template_rows(prompts: list, engines: list, runs: int):

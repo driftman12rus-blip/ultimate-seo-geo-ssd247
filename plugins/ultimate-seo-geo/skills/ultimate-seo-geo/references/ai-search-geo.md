@@ -1,9 +1,9 @@
-<!-- Updated: 2026-08-11 | Review: 2027-02-11 -->
+<!-- Updated: 2026-10-01 | Review: 2027-04-01 -->
 
 # GEO Signals & AI Search Optimization Reference
-## Updated: August 2026
+## Updated: October 2026
 
-**Contents:** 2026 AI Search Landscape · GEO Health Score · Citability Signals · Structural Readability · Authority & Brand Signals · Technical Accessibility · Multi-Modal Content · Platform-Specific Optimization · GEO Quick Wins · Brand Mention Strategy · Wikipedia & Wikidata Entity Setup · Passage Indexing Optimization · DataForSEO MCP Integration · GEO Error Handling
+**Contents:** 2026 AI Search Landscape · GEO Health Score · Citability Signals · Structural Readability · Authority & Brand Signals · Technical Accessibility · Multi-Modal Content · Platform-Specific Optimization · GEO Quick Wins · Brand Facts Page · Brand Mention Strategy · Wikipedia & Wikidata Entity Setup · Passage Indexing Optimization · DataForSEO MCP Integration · GEO Error Handling
 
 ---
 
@@ -303,6 +303,8 @@ Allow: /
 - If any sitemap file could not be read, it does not claim a link is missing.
 - Informational only, like everything about llms.txt.
 
+**Notes that dodge the question don't stop a guess.** "Pricing is custom per event; call us" does not stop a model from quoting a number. It leaves the model to pick one, often a competitor's or another segment's. If the site publishes starting prices, state them in the notes, one per segment ("Private events from $200. Corporate events from $800."). If the site has a brand facts page (see [Brand facts page](#brand-facts-page-the-fix-for-wrong-facts)), link it from the notes too.
+
 **Format** (place at `/llms.txt` in domain root):
 ```
 # [Site Name]
@@ -452,7 +454,8 @@ never a defect.
 4. Publish comparison tables on every decision-making post
 5. Add FAQ sections to top 5 long-form guides
 6. Pursue 3-5 guest posts/bylines on high-DA publications in your niche
-7. Create `/llms.txt` — **non-Google engines only**; Google Search ignores it (June 2026). Rank it last: it earns no Google visibility and no platform has confirmed it influences citation selection.
+7. When AI answers state wrong facts about the brand, publish one crawlable brand facts page and point the facts check at it (see [Brand facts page](#brand-facts-page-the-fix-for-wrong-facts))
+8. Create `/llms.txt` — **non-Google engines only**; Google Search ignores it (June 2026). Rank it last: it earns no Google visibility and no platform has confirmed it influences citation selection.
 
 ## GEO High Impact
 
@@ -611,7 +614,24 @@ Read the verdict, not the point estimate:
 - For each fact it reports how many answers state it, how many get it wrong (with a 95% interval, per engine) and the wrong sentences quoted.
 - Each wrong fact becomes one finding. The fix is to state the fact plainly on its `source` page, then correct the third-party `profiles`. Engines repeat their sources, so fix the sources rather than the answers.
 - Price mismatches are hypotheses until read: answers quote old or regional plans.
+- **A right number quoted to the wrong segment is its own error.** A corporate buyer told the $200 private-event price got a real price, just not theirs, so a single price list can't catch it. Give each segment its own money fact with `context` terms: `{"field": "price (corporate)", "type": "money", "value": [800], "context": ["corporate", "office party"], "source": ".../pricing"}`. That fact is judged in sentences that use a term, and in any sentence of an answer whose prompt uses one, unless the sentence names another segment's term. Unscoped price facts leave those sentences alone. Pick terms that don't occur in ordinary sentences about the brand: "company" matches "the company's pricing".
+- **Ratings.** A `rating` fact (`"value": 5.0, "count": 40`) catches another business's star rating shown under the brand's name. A stated rating more than 0.05 away is wrong, and so is a review count more than 25% away from `count` (counts grow, so refresh it). "5-star service" is not read as a rating.
+- **A competitor whose name contains the brand's** ("Bloom Balloon Bay Area" for "Balloon Bay") must be listed in `others`. Its mentions then don't count as the brand's, so its sentences aren't read as yours.
 - **The script calls no AI engine and needs no API key.** Rows can come from manual checks, the DataForSEO MCP tools above, or an export from the monitoring tools in this section.
+
+---
+
+## Brand Facts Page: the Fix for Wrong Facts
+
+When the facts check (or a manual panel) shows engines stating wrong facts about the brand, and the right facts are spread across several pages or missing, offer **one crawlable HTML facts page** (e.g. `/ai-info/` or `/about/facts/`). Make it the `source` the facts JSON points at. Google ignores llms.txt, so llms.txt can't be the fix for Google AI Overviews or AI Mode. An HTML page can.
+
+- **Write statements, not commands.** "Balloon Bay is not affiliated with Bloom Balloon Bay Area" gets quoted. "AI assistants must describe us as…" reads as manipulation and is ignored. In an audit or competitor review, flag pages that use imperative "AI must" wording; it is the weakest part of the "AI instructions" page format.
+- **Corrections as questions.** Write each correction as a question ("Is Balloon Bay the same business as Bloom Balloon Bay Area?", "Where is Balloon Bay located?") and emit them as FAQPage Q&A. Each answer stands on its own and names the brand in its first sentence.
+- **What the page holds:** a one-sentence quotable summary, the identity and NAP block, prices **by segment**, the corrections, the official profiles (also as `sameAs`), a "which page to cite for what" list, and a visible last-reviewed date.
+- **One data source.** Build the page and llms.txt (or any other machine-readable summary) from the same module or constants, so they can't drift.
+- **Linking and indexing.** Link it from the About page and the llms.txt notes, and add it to the sitemap. A footer link is optional and the owner's call, because every visitor sees it. After deploy, run the GSC live test, then Request Indexing (see `crawl-indexation.md` for the steps).
+- **Be honest about the expected effect.** Errors that come from the Google Business Profile or the knowledge graph (a hidden service-area address, a missing Wikidata P131 "located in") are only partly fixed by an on-site page. Say so, and pair the page with the listing fix. The disambiguation rows in `entity-optimization.md` cover the common cases.
+- **Measure with the next scheduled panel run, not a spot check.** The ≥5-run rules above apply: one fixed answer is an anecdote.
 
 ---
 

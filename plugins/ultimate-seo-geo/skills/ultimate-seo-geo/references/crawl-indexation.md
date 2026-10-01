@@ -207,7 +207,8 @@ When GSC reports "Duplicate, Google chose different canonical than user" (Page I
 | Internal links favor different URL | Most internal links point to a different URL than the canonical | Align internal links with the canonical URL |
 
 **Step 3: Validate the fix**
-- After fixing, use GSC URL Inspection → "Request Indexing" on the affected URL
+- After fixing, use GSC URL Inspection → "Request Indexing" on the affected URL. Order: inspect → **TEST LIVE URL** → confirm "URL is available to Google" → **REQUEST INDEXING**. Expect "URL was added to a priority crawl queue". Submitting again doesn't speed it up.
+- **Don't build a deep link to the inspection.** `search-console/inspect?resource_id=sc-domain:…&id=<page URL>` returns a 404: `id` is an internal token, not the URL. Open the property overview (`https://search.google.com/search-console?resource_id=sc-domain%3Aexample.com`) and paste the URL into the "Inspect any URL" bar at the top.
 - Click "Validate Fix" in the GSC Page Indexing report
 - Monitor for 7-28 days until validation completes
 
