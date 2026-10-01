@@ -1013,8 +1013,10 @@ def _source_section(sections: dict, key: str):
 # llms.txt is deliberately absent: Google Search ignores it (June 2026), so
 # it is shown in the report but never weighted.
 CHECK_WEIGHTS = {
-    "security": 8,
-    "social": 5,
+    # SSD247: useful diagnostic panels that are not direct SEO/GEO ranking
+    # requirements remain in the report but carry zero Health Score weight.
+    "security": 0,
+    "social": 0,
     "robots": 4,
     "ai_search_access": 8,
     "broken_links": 10,
@@ -1022,8 +1024,8 @@ CHECK_WEIGHTS = {
     "redirects": 3,
     "pagespeed": 13,
     "onpage": 10,
-    "readability": 8,
-    "entity": 5,
+    "readability": 0,
+    "entity": 0,
     "link_profile": 7,
     "hreflang": 5,
     "duplicate_content": 5,
@@ -1034,7 +1036,7 @@ CHECK_WEIGHTS = {
     "canonical": 7,
     "sitemap": 3,
     "local_signals": 3,
-    "indexnow_probe": 2,
+    "indexnow_probe": 0,
 }
 
 
