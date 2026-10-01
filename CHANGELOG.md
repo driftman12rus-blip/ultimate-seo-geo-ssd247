@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.22.1] - 2026-10-01
+
+The skill's files no longer name client or personal projects. Patch per D-020: wording, test data
+and fixture names only; no behaviour or output change.
+
+### Changed
+- **Examples and test data use fictitious names.** References, script comments, evals and tests
+  used real client and project names as examples. They now use `party-co.example` ("Party Co",
+  with the competitor "Bloom Party Co Bay Area"), `acme-analytics.example` ("Acme"),
+  `mushroom-guide.example`, and "the report design system". Client-specific notes read "a client
+  audit" or "a live site", and the namesake example in `entity-optimization.md` is Portland, ME
+  vs Portland, OR. A real business phone number in a test fixture is now a 555 number.
+- **Test files and test names** that carried a project name are renamed (now
+  `tests/test_live_audit_false_positives.py` and three test functions).
+- **CHANGELOG** entries for earlier releases describe the same work without the names; their
+  GitHub Release notes were edited to match.
+
 ## [1.22.0] - 2026-10-01
 
 From an AI facts page built for a local service business (2026-10-01). Its monthly AI visibility panel showed
