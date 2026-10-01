@@ -293,34 +293,34 @@ def build_environment_fixes(data: dict) -> list:
 
     if onpage_measured and not h1s:
         add(
-            "critical",
-            "Missing H1 on page",
-            "No primary content heading was detected, which weakens topical clarity.",
+            "warning",
+            "No H1 detected",
+            "A clear primary heading can improve page structure and accessibility; H1 count is not a fixed Google ranking rule.",
             _platform_hint(platform, "heading"),
         )
 
-    if onpage_measured and (not meta or len(meta) < 110 or len(meta) > 170):
+    if onpage_measured and not meta:
         add(
-            "warning",
-            "Meta description is missing or out of range",
-            "This can reduce SERP CTR and snippet quality.",
+            "info",
+            "No meta description found",
+            "A page-specific description can improve snippet messaging, but it is not a ranking requirement and Google may generate snippets from page content.",
             _platform_hint(platform, "metadata"),
         )
 
-    if onpage_measured and (not title or len(title) < 30 or len(title) > 65):
+    if onpage_measured and not title:
         add(
-            "warning",
-            "Title tag needs optimization",
-            "Title length/content is likely suboptimal for rankings and click-through.",
+            "critical",
+            "Missing title tag",
+            "The page lacks its primary document title.",
             _platform_hint(platform, "metadata"),
         )
 
     missing_headers = sec.get("headers_missing", {})
     if missing_headers:
         add(
-            "warning",  # HTTPS with headers missing is a middle tier; no HTTPS is the failing one
+            "info",
             f"{len(missing_headers)} security headers missing",
-            "Missing headers reduce trust and can expose the site to browser/security risks.",
+            "This is a security-hardening note, not a Google ranking factor. Missing headers can still matter for browser/security risk.",
             _platform_hint(platform, "headers"),
         )
 
@@ -470,6 +470,8 @@ def build_environment_fixes(data: dict) -> list:
         )
 
     # Programmatic SEO issues
+    # The underlying auditor may report descriptive word-count/similarity metrics,
+    # but only structured issues with evidence should affect recommendations.
     pseo = data["sections"].get("programmatic_seo", {})
     if pseo and not pseo.get("error") and pseo.get("pattern_groups_found", 0) > 0:
         pseo_crit = pseo.get("total_critical_issues", 0)
@@ -478,24 +480,24 @@ def build_environment_fixes(data: dict) -> list:
             add(
                 "critical",
                 f"{pseo_crit} critical programmatic SEO issue(s) detected",
-                "Template pages have scaled content abuse risk (low uniqueness, duplicate titles, thin content).",
-                "Add genuinely unique per-page content. Each page needs ≥40% unique content and unique title/H1/meta.",
+                "Programmatic pages show evidence-based issues such as duplicate metadata, missing canonicals, or weak internal linking.",
+                "Fix the specific structured findings. Do not use word-count or uniqueness percentages alone as remediation targets.",
             )
         elif pseo_warn > 2:
             add(
                 "warning",
                 f"{pseo_warn} programmatic SEO warnings",
-                "Template pages have quality concerns that could trigger Google's Helpful Content system.",
-                "Review template pages for content differentiation and internal linking.",
+                "Several evidence-based template issues were detected.",
+                "Review the specific duplicate metadata, canonical, and internal-linking findings rather than targeting arbitrary content-length percentages.",
             )
 
     can_alt = can.get("summary", {}).get("alternate_pages", 0) if isinstance(can.get("summary"), dict) else 0
     if can_alt > 0:
         add(
-            "warning" if can_alt < 10 else "critical",
-            f"{can_alt} page(s) flagged as 'Alternate page with proper canonical'",
-            "These pages have non-self-referencing canonicals — Google won't index them.",
-            "If pages have unique content, change canonical to self-referencing. If true duplicates, consider 301 redirect to canonical target.",
+            "info",
+            f"{can_alt} page(s) use non-self-referencing canonicals",
+            "This can be intentional for duplicate/variant URLs and is not a defect by count alone.",
+            "Review only unexpected alternates against intended indexation and Search Console. Do not change intentional Shopify variant/filter canonicals solely because they are non-self-referencing.",
         )
 
     il_broken = len(il.get("broken_internal_pages", []))
@@ -519,9 +521,9 @@ def build_environment_fixes(data: dict) -> list:
     tw_missing = soc.get("twitter_missing", [])
     if og_missing or tw_missing:
         add(
-            "warning",
+            "info",
             "Social meta tags are incomplete",
-            "Missing OG/Twitter tags weakens social previews and share quality.",
+            "Missing OG/Twitter tags can weaken social previews, but this is not a Google ranking factor.",
             _platform_hint(platform, "metadata"),
         )
 
@@ -538,10 +540,10 @@ def build_environment_fixes(data: dict) -> list:
     if not rd.get("error") and (
             rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25):
         add(
-            "warning",
-            "Content readability is difficult",
-            "Long, complex text can reduce engagement and comprehension.",
-            "Rewrite key sections with shorter sentences (15-20 words), shorter paragraphs (2-4 sentences), and clearer subheadings.",
+            "info",
+            "Readability metric is relatively difficult",
+            "Flesch and sentence-length metrics are descriptive and can misread technical product content.",
+            "Review actual user comprehension before rewriting; do not target a fixed readability or sentence-length score.",
         )
 
     if not fixes:
@@ -827,6 +829,7 @@ def collect_data(
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
         ("content_quality", "content_quality.py", [url]),
+        ("ecommerce_schema", "ecommerce_schema.py", [url]),
         ("sitemap", "sitemap_checker.py", sitemap_args),
         # Site structure (display-only, never in CHECK_WEIGHTS)
         ("page_types", "page_type_classifier.py", structure_args),
@@ -1011,8 +1014,10 @@ def _source_section(sections: dict, key: str):
 # llms.txt is deliberately absent: Google Search ignores it (June 2026), so
 # it is shown in the report but never weighted.
 CHECK_WEIGHTS = {
-    "security": 8,
-    "social": 5,
+    # SSD247: useful diagnostic panels that are not direct SEO/GEO ranking
+    # requirements remain in the report but carry zero Health Score weight.
+    "security": 0,
+    "social": 0,
     "robots": 4,
     "ai_search_access": 8,
     "broken_links": 10,
@@ -1020,8 +1025,8 @@ CHECK_WEIGHTS = {
     "redirects": 3,
     "pagespeed": 13,
     "onpage": 10,
-    "readability": 8,
-    "entity": 5,
+    "readability": 0,
+    "entity": 0,
     "link_profile": 7,
     "hreflang": 5,
     "duplicate_content": 5,
@@ -1032,7 +1037,7 @@ CHECK_WEIGHTS = {
     "canonical": 7,
     "sitemap": 3,
     "local_signals": 3,
-    "indexnow_probe": 2,
+    "indexnow_probe": 0,
 }
 
 
@@ -1173,9 +1178,14 @@ def calculate_overall_score(data: dict) -> dict:
     # Duplicate content score
     dc = data["sections"].get("duplicate_content", {})
     if dc and not dc.get("error"):
-        dupes = len(dc.get("near_duplicates", []))
-        thin = len(dc.get("thin_pages", []))
-        dc_score = 100 - dupes * 20 - thin * 10
+        # Text similarity and word count are diagnostic only. Normal same-site
+        # duplication is not a Google spam penalty. Score only confirmed canonical
+        # conflicts emitted by the duplicate-content diagnostic.
+        confirmed = [
+            i for i in (dc.get("canonical_issues") or [])
+            if str(i.get("severity", "")).lower() in ("critical", "high", "warning")
+        ]
+        dc_score = 100 - len(confirmed) * 10
         scores["duplicate_content"] = max(0, min(100, dc_score))
     else:
         scores["duplicate_content"] = 0
@@ -1321,7 +1331,7 @@ CHECK_GROUPS = {
 }
 CHECK_GROUP = {
     "onpage": "on_page", "social": "on_page",
-    "schema_validation": "schema",
+    "schema_validation": "schema", "ecommerce_schema": "schema",
     "ai_search_access": "geo",
     "canonical": "technical", "robots": "technical", "sitemap": "technical", "security": "technical",
     "redirects": "technical", "broken_links": "technical", "hreflang": "technical",
@@ -1337,7 +1347,7 @@ CHECK_GROUP = {
     "search_performance": "on_page",
 }
 # Structure checks report findings but carry no score: shown, never weighted.
-DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture", "search_performance")
+DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture", "search_performance", "ecommerce_schema")
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
 # Who acts on a finding. The vocabulary is the recommendation register's
@@ -1361,7 +1371,7 @@ LANE_REASONS = {
 # references/procedures/02-full-site-audit.md (Mode 3). tests pin that every
 # check has one.
 CHECK_LANE = {
-    "onpage": "Auto", "social": "Auto", "schema_validation": "Auto", "image_seo": "Auto",
+    "onpage": "Auto", "social": "Auto", "schema_validation": "Auto", "ecommerce_schema": "Auto", "image_seo": "Auto",
     "internal_links": "Auto", "broken_links": "Auto", "navigation": "Auto", "readability": "Auto",
     "content_quality": "Auto", "article": "Auto", "citability": "Auto", "llms_txt": "Auto",
     "sitemap": "Auto", "indexnow_probe": "Auto", "local_signals": "Auto",
