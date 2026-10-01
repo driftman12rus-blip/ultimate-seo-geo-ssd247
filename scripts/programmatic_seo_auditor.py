@@ -548,14 +548,14 @@ def main():
 
         wc = g["word_count"]
         print(f"   Words: avg {wc['average']}, min {wc['min']}, max {wc['max']}"
-              f" | Thin: {wc['thin_count']}")
+              f" | Below diagnostic threshold: {wc['below_diagnostic_threshold_count']}")
 
         if "content_uniqueness" in g:
             cu = g["content_uniqueness"]
             print(f"   Uniqueness: {cu['avg_unique_pct']}% avg"
                   f" | Boilerplate: {cu['avg_boilerplate_pct']}%"
-                  f" | Abuse risk: {cu['hard_stop_count']}"
-                  f" | Thin risk: {cu['warning_count']}")
+                  f" | <30% diagnostic: {cu['below_30_pct_count']}"
+                  f" | 30-40% diagnostic: {cu['between_30_40_pct_count']}")
 
         t = g["titles"]
         print(f"   Titles: {t['unique_pct']}% unique ({t['unique']}/{t['total']})")
