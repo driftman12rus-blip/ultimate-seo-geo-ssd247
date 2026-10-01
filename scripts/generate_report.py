@@ -470,6 +470,8 @@ def build_environment_fixes(data: dict) -> list:
         )
 
     # Programmatic SEO issues
+    # The underlying auditor may report descriptive word-count/similarity metrics,
+    # but only structured issues with evidence should affect recommendations.
     pseo = data["sections"].get("programmatic_seo", {})
     if pseo and not pseo.get("error") and pseo.get("pattern_groups_found", 0) > 0:
         pseo_crit = pseo.get("total_critical_issues", 0)
@@ -478,15 +480,15 @@ def build_environment_fixes(data: dict) -> list:
             add(
                 "critical",
                 f"{pseo_crit} critical programmatic SEO issue(s) detected",
-                "Template pages have scaled content abuse risk (low uniqueness, duplicate titles, thin content).",
-                "Add genuinely unique per-page content. Each page needs ≥40% unique content and unique title/H1/meta.",
+                "Programmatic pages show evidence-based issues such as duplicate metadata, missing canonicals, or weak internal linking.",
+                "Fix the specific structured findings. Do not use word-count or uniqueness percentages alone as remediation targets.",
             )
         elif pseo_warn > 2:
             add(
                 "warning",
                 f"{pseo_warn} programmatic SEO warnings",
-                "Template pages have quality concerns that could trigger Google's Helpful Content system.",
-                "Review template pages for content differentiation and internal linking.",
+                "Several evidence-based template issues were detected.",
+                "Review the specific duplicate metadata, canonical, and internal-linking findings rather than targeting arbitrary content-length percentages.",
             )
 
     can_alt = can.get("summary", {}).get("alternate_pages", 0) if isinstance(can.get("summary"), dict) else 0
