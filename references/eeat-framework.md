@@ -164,7 +164,7 @@ Added as YMYL category — content about elections, voting, democratic processes
 | 70-89 | Strong E-E-A-T — demonstrated expertise, good trust signals, some recognition |
 | 50-69 | Moderate E-E-A-T — some signals present, meaningful room for improvement |
 | 30-49 | Weak E-E-A-T — minimal signals, significant gaps to address |
-| 0-29 | Very low E-E-A-T — no visible signals, potential trust issues or penalties |
+| 0-29 | Very low framework score — investigate trust/quality gaps; do not infer a Google penalty from this internal score |
 
 ---
 
@@ -248,12 +248,12 @@ Example: A page scoring 80/25/50/70 = (80×0.20) + (25×0.25) + (50×0.25) + (70
 
 | Page Type | Word Floor | Keyword Placement |
 |---|---|---|
-| Blog post | 1,500+ words | Title, H1, first 100 words |
-| Service page | 800+ words | Title, H1, first 100 words |
+| Blog post | Enough depth to satisfy intent | Natural topic coverage; no fixed keyword-placement rule |
+| Service page | Enough detail for the service decision | Clear topic and service facts; no fixed word floor |
 | Homepage | 500+ words | Primary value proposition above fold |
 | Product page | 300+ words | Product name in title + H1 + first paragraph |
 
-**Note**: Google explicitly states there is no minimum or maximum word count. These are floors — cover the topic comprehensively. Never pad content to hit a target.
+**Note**: Google has no minimum or maximum word count. Do not define substitute floors; cover the topic to the depth users need and stop.
 
 ## Readability Scoring
 
