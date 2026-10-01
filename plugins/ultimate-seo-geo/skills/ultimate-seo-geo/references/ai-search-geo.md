@@ -7,6 +7,12 @@
 
 ---
 
+## Evidence standard for this reference
+
+This file contains platform facts plus third-party studies. Keep those categories separate. Exact correlations, citation shares, passage lengths, freshness multipliers and uplift percentages are **study-specific observations**, not universal platform requirements and not guaranteed effects. For SSD247, they may motivate an experiment but must not create a Critical/High/Warning finding by themselves. Prefer current official crawler/platform documentation and repeated citation sampling over benchmark-derived rules.
+
+Any GEO Health Score below is an internal comparison rubric only. It is not a Google, OpenAI, Perplexity or Bing score and must not be described as a ranking probability.
+
 ## 2026 AI Search Landscape
 
 | Platform | Reach | Query Coverage | Key Insight |
@@ -27,11 +33,11 @@
 
 | Dimension | Weight | Optimal Signal |
 |---|---|---|
-| Citability | 25% | 134-167 word self-contained answer blocks, direct answer in first 40-60 words of section |
-| Structural Readability | 20% | Clean H1→H2→H3, question-based headings, 2-4 sentence paragraphs, tables, lists |
-| Authority & Brand Signals | 20% | Author bio + credentials, publication dates, citations, entity presence across platforms |
+| Citability | 25% | Clear, self-contained facts and answers that can be understood without hidden context; no fixed word-count target |
+| Structural Readability | 20% | Clear page structure, useful headings, tables/lists where they improve comprehension; no required heading count/order for ranking |
+| Authority & Brand Signals | 20% | Verifiable entity/fact consistency and appropriate trust signals for the page type; product pages do not require editorial bylines |
 | Technical Accessibility | 20% | AI search crawlers allowed in robots.txt (`generate_report.py` scores this as `ai_search_access`), server-side rendering, key content present in raw HTML |
-| Multi-Modal Content | 15% | Text + images + video + structured data (78% of cited sources combine these) |
+| Multi-Modal Content | 15% | Relevant media and structured facts where they genuinely help the user; not a quota |
 
 **Scoring formula**: score each dimension **0–100**, then `Σ(dimension weight × dimension score)`. Weights sum to 100%, so the result is already on the 0–100 scale — no further division. (Worked example: `references/audit-output-example.md` § Example 3.)
 
@@ -58,14 +64,14 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 
 ## Citability Signals (Dimension 1: 25%)
 
-**Optimal passage length: 134-167 words** for AI citation extraction.
+There is no universal platform-documented optimal passage length. Use self-contained, concise sections when that improves comprehension, then test citation behavior empirically.
 
 `scripts/citability_checker.py` measures the structural side of this dimension and of Structural Readability on one page: prose walls, paragraph length, the heading outline and specific figures, plus whether it opens with a lead paragraph. It does not know the target query, so whether a passage *answers* it stays a judgment call.
 
 ### Strong Citability Signals
 - Clear, quotable sentences with specific facts, statistics, or data
 - Self-contained answer blocks (extractable without surrounding context)
-- Direct answer in first 40-60 words of each section
+- Put the useful answer early when it helps the reader; no fixed 40–60-word cutoff
 - Claims attributed to specific sources ("According to [Study], X% of...")
 - Definition patterns: "X is...", "X refers to...", "X means..."
 - Unique data points not found elsewhere on the web
@@ -81,13 +87,13 @@ Different AI platforms prioritize different GEO dimensions. Use this matrix to a
 - **Middle 30-70%**: 31.1% of citations
 - **Final 30%**: 24.7% of citations
 
-**Implication**: Lead with the answer, not with context. Top-loading key information is the single highest-leverage writing change.
+**Interpretation**: some studies observe more citations earlier in pages. Treat this as a writing experiment, not a platform requirement or guaranteed highest-leverage change.
 
 ### Content Recency as Citation Lever
-Content under 3 months old receives approximately **3x the AI citation rate** compared to older content (SE Ranking, 2026). AI systems strongly favor fresh, recently updated content. Implications:
+One 2026 study reported materially higher citation rates for newer content. This is observational and query-dependent; freshness matters mainly when facts or intent are time-sensitive. Possible tests:
 - Add visible `dateModified` to all key pages when updating content
 - Refresh statistics, data points, and examples at least quarterly on high-value pages
-- New content has a recency window of ~3 months where citation probability is highest
+- Measure whether genuinely refreshed, time-sensitive pages gain citations; do not update evergreen pages merely to reset a date
 
 ---
 
@@ -96,7 +102,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 47% of AI Overview citations come from pages ranking **below position 5** — demonstrating that AI selection logic differs from traditional ranking.
 
 ### Strong Structural Signals
-- Clean heading hierarchy: H1 (one per page) → H2 (main sections) → H3 (subsections)
+- Clear semantic/visual headings that help readers navigate; Google does not require exactly one H1 or strict H1→H2→H3 order
 - Question-based headings that match query patterns: "How does X work?", "What is the difference between X and Y?"
 - Short paragraphs: 2-4 sentences, one idea per paragraph
 - Tables for comparative information (formats, pricing, options)
@@ -115,7 +121,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 
 ### Brand Mentions vs. Backlinks
 
-**Brand mentions are 3× more predictive of AI visibility than backlinks.**
+Some third-party studies report stronger correlation between brand mentions and AI citations than between backlinks and citations. Correlation is not causation and should not be used as a fixed weighting.
 
 | Signal | Correlation with AI Citations |
 |---|---|
@@ -135,7 +141,7 @@ Content under 3 months old receives approximately **3x the AI citation rate** co
 2. **Reddit** — genuine participation in relevant subreddits (r/ProductManagement, r/SaaS, r/startups, etc.)
 3. **Wikipedia / Wikidata** — create entity entry with citations; link to your site
 4. **LinkedIn** — publish articles (not just posts) that LinkedIn indexes as standalone pages
-5. **Third-party review sites** — G2, Trustpilot, Capterra, Yelp (3× citation increase for brands with profiles)
+5. **Third-party review sites** — maintain accurate profiles where customers actually use them; do not assume a fixed citation uplift
 6. **arXiv / research** — for scientific/technical domains
 
 ### Tactical Playbooks per Channel
@@ -222,13 +228,13 @@ Wikipedia and Wikidata entities are among the highest-signal sources for AI cita
 
 ### AI Crawler Management
 
-**AI crawlers do NOT execute JavaScript** — content that requires JS to render is invisible to AI crawlers.
+**Do not assume JavaScript support is identical across AI crawlers.** Verify the target crawler/engine. Initial HTML is the most portable delivery, while Google Search can render JavaScript.
 
 | Crawler | Owner | Role | Recommendation |
 |---|---|---|---|
-| OAI-SearchBot | OpenAI | Search index (ChatGPT search) | **Always allow**. Blocking it removes the site from ChatGPT search results |
-| Claude-SearchBot | Anthropic | Search index (Claude search) | **Always allow**. Blocking it reduces visibility in Claude's search results |
-| PerplexityBot | Perplexity | Search index (Perplexity) | **Always allow**. Essential for Perplexity citations |
+| OAI-SearchBot | OpenAI | Automatic crawler for ChatGPT Search | Allow on pages you want discoverable/summarized in ChatGPT Search; blocking opts those pages out of normal Search crawling, though navigational links may still surface |
+| Claude-SearchBot | Anthropic | Search crawler | Allow when Claude search visibility is a stated goal; verify current Anthropic documentation before changing production robots.txt |
+| PerplexityBot | Perplexity | Search crawler | Allow when Perplexity visibility is a stated goal; verify current Perplexity crawler documentation before changing production robots.txt |
 | meta-webindexer | Meta | Search index (Meta AI search) | Allow |
 | DuckAssistBot | DuckDuckGo | Search: real-time fetch for AI-assisted answers, not used for training | Allow. Blocking it does not affect organic DuckDuckGo rankings |
 | Amzn-SearchBot | Amazon | Search in Amazon products, not used for training | Allow |
@@ -334,9 +340,7 @@ Useful for organizations wanting to differentiate between allowing AI Search cit
 
 ## Multi-Modal Content (Dimension 5: 15%)
 
-Content with multi-modal elements sees **156% higher AI selection rates**.
-
-**78% of AI-cited sources** combine text, images, and structured data.
+Some datasets associate multi-modal pages with higher AI citation/selection rates. Treat those percentages as dataset-specific observations, not a requirement. Add media only when it improves the page.
 
 ### What to Include
 - Feature images / hero images (with descriptive alt text)
@@ -351,11 +355,9 @@ Content with multi-modal elements sees **156% higher AI selection rates**.
 ## Platform-Specific Optimization
 
 ### Google AI Overviews
-- Ranking in top-10 is still a prerequisite (92% of citations from top-10 historically; now 38%)
-- Passage-level optimization matters more than page-level
-- Question-based H2/H3 headings closely match AI Overview triggers
-- First 30% of content provides 44.2% of citations — front-load your answers
-- Semantic completeness (r=0.89): self-contained sections score 4.2× more citations
+- Organic ranking and relevance remain important inputs, but no fixed top-10 prerequisite should be assumed.
+- Clear, self-contained sections can be tested for better extraction/citation; no passage-length or heading-format rule is documented as mandatory.
+- Third-party studies about citation position and semantic completeness are research context only, not expected uplift for SSD247.
 - **Top Stories carousel inside AI Overviews** (live July 17, 2026, US mobile) surfaces the searcher's preferred sources on developing-news queries — see § Preferred Sources below
 
 ### Preferred Sources — the one reader-controlled lever inside AI answers
@@ -404,47 +406,41 @@ safe mid-article.
 and reports host-level eligibility. Reported at Info severity — its absence is a missed opportunity,
 never a defect.
 
-### Google AI Mode (launched May 2025, powered by custom Gemini 2.5)
-- **Distinct citation engine** from AI Overviews — only 13.7% URL overlap (Ahrefs, 540K query pairs). Optimize separately.
-- 1B+ monthly users (I/O 2026). Powered by a custom version of Gemini 2.5.
-- Conversational, multi-turn — requires comprehensive depth
-- "Deep Search" runs 100+ sub-searches for complex queries
-- No organic blue links — AI citation is the only visibility
-- Content **recency** is a strong citation lever (~3x for content under 3 months, SE Ranking)
-- Optimize for multi-step, research-style queries
-- Images and video inputs supported (multi-modal input)
+### Google AI Mode
+- Treat it as a distinct search experience and measure actual cited/source URLs rather than assuming the same source set as AI Overviews.
+- Conversational and multi-step queries may reward comprehensive, well-structured facts, but no fixed depth or freshness multiplier is guaranteed.
+- Images/video may participate in the experience; add them for user value, not to satisfy a GEO quota.
 
 ### ChatGPT Search
-- Citations heavily favor Wikipedia (47.9%), Reddit (11.3%), and LinkedIn
-- No referral traffic header — cannot track via GA
-- Brand mentions and entity strength matter more than traditional SEO
-- Content freshness: update within 2 months for 28% more citations
-- 85% of retrieved pages are NEVER cited — quality threshold above retrieval
+- OAI-SearchBot access matters for normal automatic Search crawling; GPTBot is a separate training-control choice.
+- Source mixes vary by query and over time; do not build a channel strategy from one dataset's Wikipedia/Reddit percentages.
+- Referral attribution can vary; inspect actual GA4 source/medium, landing-page parameters and server logs rather than assuming all ChatGPT traffic is Direct.
+- Measure freshness, brand/entity clarity and citation rates with repeated prompt sampling instead of fixed uplift percentages.
 
 ### Perplexity
-- Content freshness is the #1 factor — newly published content indexed within hours-days
-- Sends trackable referral traffic (can monitor in GA)
-- Q&A format headings and definitive opening paragraphs
-- AI, science, marketing content gets 3× ranking multiplier
-- Uses RAG (Retrieval-Augmented Generation) — factual, well-structured content preferred
+- Verify crawler access and actual referral/citation behavior.
+- Freshness, Q&A structure and factual clarity can be tested, but there is no universal documented "#1 factor" or 3× niche multiplier.
+- Prefer accurate, well-structured facts and repeated measurement over formulaic page rewrites.
 
 ### Bing Copilot
-- Bing index authority (same as Bing SEO)
-- IndexNow support for faster indexing of new/updated content
-- Security headers and HTTPS required
+- Bing crawl/index health remains relevant.
+- IndexNow can help supported engines discover changed URLs faster, but it is not a Google ranking signal.
+- HTTPS is baseline site security; extra security headers are hardening, not a documented ranking requirement.
 
 ---
 
-## GEO Quick Wins (High Impact, Low Effort)
+## GEO Experiments / Quick Checks
 
-1. Add "What is [topic]?" definition in first 60 words of each post
-2. Create 134-167 word self-contained answer blocks at start of each H2 section
-3. Convert paragraph-heavy sections to Q&A format headings
-4. Include 5-8 statistics with source attribution per article (40% AI visibility boost)
-5. Add publication date AND last-updated date to every post
-6. Ensure AI crawlers (GPTBot, OAI-SearchBot, PerplexityBot) are allowed in robots.txt
-7. Create author bio page with credentials, LinkedIn link, and external mentions
-8. Add Article/BlogPosting JSON-LD schema to all posts
+Use these as hypotheses only where they fit the page type:
+
+1. Make the primary answer or product fact easy to find without unnecessary preamble.
+2. Break genuinely hard-to-read prose into self-contained sections; do not target a fixed word count.
+3. Use tables or comparisons when they improve product/category decisions.
+4. Cite primary sources for editorial statistics or research claims; ordinary product specifications do not need artificial editorial citations.
+5. Keep time-sensitive facts current; do not change dates merely to appear fresh.
+6. For ChatGPT Search visibility, allow OAI-SearchBot on pages you want surfaced. GPTBot is an independent training-control choice.
+7. Add author/reviewer information on editorial or YMYL content where it helps users assess expertise; it is not a product-page requirement.
+8. Use documented structured data that matches visible content and feed/product facts.
 
 ## GEO Medium Effort
 
@@ -457,19 +453,19 @@ never a defect.
 7. When AI answers state wrong facts about the brand, publish one crawlable brand facts page and point the facts check at it (see [Brand facts page](#brand-facts-page-the-fix-for-wrong-facts))
 8. Create `/llms.txt` — **non-Google engines only**; Google Search ignores it (June 2026). Rank it last: it earns no Google visibility and no platform has confirmed it influences citation selection.
 
-## GEO High Impact
+## Higher-effort GEO experiments
 
-1. Create original research/survey ("State of [Industry] 2026") — most-cited content type
-2. Build YouTube channel with educational content on your core topics
-3. Establish Wikipedia presence for brand and key people
-4. Develop interactive tools or calculators
-5. Achieve 32,000+ referring domains (3.5× citation probability threshold)
+1. Publish original research or genuinely useful comparison data when SSD247 can contribute something unavailable elsewhere.
+2. Create video or interactive content only where customers benefit from it.
+3. Maintain accurate third-party/entity profiles where independently justified; do not create Wikipedia/Wikidata entries solely for SEO.
+4. Build useful tools or calculators where they solve a real buying/compatibility problem.
+5. Grow legitimate authority and mentions through useful work; there is no referring-domain threshold that guarantees AI citations.
 
 ---
 
 ## Brand Mention Strategy (Full Correlation Data)
 
-Ahrefs/75k brand study: brand mention correlation with AI citations = **0.664** vs. backlinks = **0.218**. Brand mentions are 3× more powerful than backlinks for AI citation.
+An Ahrefs brand study reported a higher correlation between brand mentions and AI citations than between backlinks and citations. Keep the original study values as research context only; they do not establish causation or a universal 3× effect.
 
 **Priority channels (highest to lowest correlation):**
 
@@ -481,13 +477,13 @@ Ahrefs/75k brand study: brand mention correlation with AI citations = **0.664** 
 | **LinkedIn articles** | Medium | Thought leadership from author profiles |
 | **G2, Trustpilot, Capterra** | Medium | Third-party review profiles |
 
-For each channel with zero presence, create a plan to establish it. YouTube and Reddit drive the highest AI citation correlation — prioritize first.
+Do not create a channel merely because it is absent. Prioritize only channels that fit SSD247's customers and can produce genuine useful content; then measure whether citation/brand-fact outcomes change.
 
 ## Wikipedia & Wikidata Entity Setup (Full Steps)
 
 Wikipedia and Wikidata presence correlates strongly with AI citations — both ChatGPT and Perplexity pull heavily from Wikipedia.
 
-1. **Check Wikidata first** — Search wikidata.org for the brand. If no entry: create a Wikidata stub (brand name, type, founding date, website, official social links). Takes under an hour and alone can improve AI citation likelihood.
+1. **Check Wikidata only when entity disambiguation is relevant** — verify any existing entry for accuracy. Create or edit an entry only when it meets Wikidata's own inclusion/data rules; do not create one solely to chase AI citations.
 2. **Assess Wikipedia notability** — Wikipedia requires substantial coverage in 3+ independent, reliable sources with editorial standards (not press releases or self-published content).
 3. **If notable** — Create a Wikipedia article with neutral tone, citing only independent reliable sources. No promotional language — it will be deleted.
 4. **If not yet notable** — Earn 3+ substantial independent citations in publications with editorial standards. Once met, revisit Wikipedia.
@@ -495,13 +491,13 @@ Wikipedia and Wikidata presence correlates strongly with AI citations — both C
 
 ## Passage Indexing Optimization
 
-Google Passage Indexing (active since 2021) ranks individual passages independently from the full page. It's also the primary mechanism for AI citation of specific answers — both systems prefer the same structure.
+Google's passage ranking system helps Search understand the relevance of individual sections within a page. It does not mean passages are independently indexed pages, and Google does not document it as the primary mechanism for third-party AI citations.
 
-**Rules for passage-optimized content:**
-1. Each H2 block should be **self-contained** — answers one clear question without requiring context from other sections.
-2. **Optimal passage length: 100–200 words per block** — sweet spot for both Passage Indexing and AI citation (confirmed citability range: 134–167 words).
-3. **No pronoun-heavy openings** — never start a section with "It" or "This" referring to a previous section. Start with the full subject ("Email marketing automation is...").
-4. **Question → Direct Answer structure** — question-phrased H2/H3 immediately followed by a direct answer in the first sentence.
+**Useful writing practices to test:**
+1. Make sections understandable in context and avoid unnecessary ambiguity.
+2. Use the length needed to answer the question; there is no platform-documented 100–200 or 134–167 word requirement.
+3. Repeat the subject when it improves clarity, but natural pronouns are not an SEO defect.
+4. Use question/direct-answer structure when it matches user intent; do not force every heading into that format.
 
 | Scenario | Google Behavior |
 |---|---|
@@ -541,7 +537,7 @@ Empirical data from Princeton's Generative Engine Optimization study on specific
 | **Fluency optimization** | +15–30% | Improve readability and natural flow |
 | ~~Keyword stuffing~~ | **-10%** | **Actively hurts AI visibility** |
 
-**Best combination**: Fluency + Statistics = maximum visibility boost. Low-ranking sites benefit disproportionately — up to **115% visibility increase** when adding citations to previously uncited content.
+These experiment results come from a particular GEO research setup. They can suggest test ideas (clear writing, sourced claims), but the percentages are not expected uplift for a live commerce site and should not be used in forecasts.
 
 ---
 
@@ -559,7 +555,7 @@ Which content types get cited most by AI systems:
 | **How-to guides** | ~8% | Step-by-step structure matches procedural queries |
 | **Opinion / analysis** | ~10% | Expert perspective, quotable conclusions |
 
-**Implication**: If you only create one new content type for GEO, create a comparison article — they receive 1/3 of all AI citations.
+**Interpretation**: citation shares vary by dataset, query mix and engine. For SSD247, choose content types from actual customer/search demand; comparison content is useful only when it answers a real buying decision.
 
 ---
 
