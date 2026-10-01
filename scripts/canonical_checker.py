@@ -23,7 +23,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from url_safety import get_validated, is_crawlable_href, normalize_url
+from url_safety import get_validated, is_crawlable_href
 
 try:
     import requests
@@ -300,27 +300,27 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
             if target_resp is not None:
                 result["canonical_status"] = target_resp.status_code
 
-            if target_resp.status_code == 404:
-                result["issues"].append({
-                    "severity": "critical",
-                    "finding": f"Canonical URL returns 404: {raw_canonical}",
-                    "fix": "Fix the canonical URL or update the canonical tag to "
-                           "point to a valid, indexable page.",
-                })
-            elif target_resp.status_code >= 400:
-                result["issues"].append({
-                    "severity": "critical",
-                    "finding": f"Canonical URL returns HTTP {target_resp.status_code}: "
-                               f"{raw_canonical}",
-                    "fix": "Canonical must point to a URL that returns 200.",
-                })
-            elif _normalize_url(target_resp.url) != _normalize_url(raw_canonical):
-                final_canonical = target_resp.url
-                result["issues"].append({
-                    "severity": "warning",
-                    "finding": f"Canonical URL redirects: {raw_canonical} → {final_canonical}.",
-                    "fix": f"Prefer the final destination directly in the canonical: {final_canonical}.",
-                })
+                if target_resp.status_code == 404:
+                    result["issues"].append({
+                        "severity": "critical",
+                        "finding": f"Canonical URL returns 404: {raw_canonical}",
+                        "fix": "Fix the canonical URL or update the canonical tag to "
+                               "point to a valid, indexable page.",
+                    })
+                elif target_resp.status_code >= 400:
+                    result["issues"].append({
+                        "severity": "critical",
+                        "finding": f"Canonical URL returns HTTP {target_resp.status_code}: "
+                                   f"{raw_canonical}",
+                        "fix": "Canonical should point to a usable primary URL.",
+                    })
+                elif _normalize_url(target_resp.url) != _normalize_url(raw_canonical):
+                    final_canonical = target_resp.url
+                    result["issues"].append({
+                        "severity": "warning",
+                        "finding": f"Canonical URL redirects: {raw_canonical} → {final_canonical}.",
+                        "fix": f"Prefer the final destination directly in the canonical: {final_canonical}.",
+                    })
 
             if (
                 target_resp is not None
