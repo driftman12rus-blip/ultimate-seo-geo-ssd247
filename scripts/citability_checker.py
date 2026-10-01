@@ -319,8 +319,9 @@ def analyze(html: str, url: str = "") -> dict:
         if previous is not None and h["level"] > previous + 1:
             skips.append(f"H{previous} → H{h['level']} at \"{_headline(h['text'], 50)}\"")
         previous = h["level"]
-    components["heading_structure"] = {"score": (50 if h1_count == 1 else 0) + (50 if not skips else 0),
-                                       "h1": h1_count, "skipped_levels": skips[:3]}
+    components["heading_structure"] = {"score": (50 if h1_count >= 1 else 0) + (50 if not skips else 0),
+                                       "h1": h1_count, "skipped_levels": skips[:3],
+                                       "note": "Multiple H1 elements are not an SEO failure; this metric only checks whether a main heading exists and whether the outline is easy to follow."}
 
     # Specificity.
     substantive = [p for p in paragraphs if p["words"] >= 20]
@@ -344,8 +345,7 @@ def _issues(c: dict, lead: bool) -> list:
             "finding": f"{ps['walls']} section(s) run over {PASSAGE_MAX} words of prose with no list, table "
                        f"or subheading",
             "evidence": "Sections: " + "; ".join(ps["examples"]),
-            "fix": "Split each into subsections under descriptive headings, or move steps and comparisons into "
-                   "lists and tables.",
+            "fix": "Consider splitting only if the section is genuinely hard to scan or citation sampling suggests extraction problems; the word threshold is diagnostic, not a platform rule.",
             "falsifiability": "If readers finish these sections (scroll depth, time on section) at the page "
                               "average, their length is not hurting them.",
             "leading_indicator": "Rerun citability_checker.py: no sections over the prose limit.",
@@ -356,7 +356,7 @@ def _issues(c: dict, lead: bool) -> list:
             "finding": "The page does not open with a summary paragraph",
             "evidence": f"No paragraph of {LEAD_MIN_WORDS}+ words starts within the first {LEAD_WINDOW} words "
                         f"after the H1.",
-            "fix": "Add a two- or three-sentence opening that states what the page answers.",
+            "fix": "Consider a concise opening when it helps readers; there is no fixed lead-window requirement.",
             "falsifiability": "If the page already earns its target snippet or AI citation without an opening "
                               "summary, the lead is not the constraint.",
             "leading_indicator": "Rerun citability_checker.py: lead present.",
@@ -367,7 +367,7 @@ def _issues(c: dict, lead: bool) -> list:
             "severity": "low",
             "finding": f"{pl['long']} of {pl['of']} paragraphs exceed {LONG_PARAGRAPH} words",
             "evidence": "Paragraphs: " + "; ".join(pl["examples"]),
-            "fix": "Break long paragraphs into two to four sentences, one idea each.",
+            "fix": "Break paragraphs only where readability improves; the word threshold is diagnostic.",
             "leading_indicator": "Rerun citability_checker.py: paragraph length score 80+.",
         })
     hs = c["heading_structure"]
@@ -376,7 +376,7 @@ def _issues(c: dict, lead: bool) -> list:
             "severity": "low",
             "finding": "Heading levels skip",
             "evidence": "; ".join(hs["skipped_levels"]),
-            "fix": "Nest headings in order (H2 before H3) so the outline matches the content structure.",
+            "fix": "Review heading structure for user/accessibility clarity; skipped levels are not a Google ranking defect.",
             "leading_indicator": "Rerun citability_checker.py: no skipped levels.",
         })
     return issues
