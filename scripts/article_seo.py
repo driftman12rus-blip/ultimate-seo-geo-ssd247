@@ -478,35 +478,32 @@ def detect_seo_issues(content: dict, structured_data: list, readability: dict) -
 
     # Title checks
     if not title:
-        issues.append({"severity": "Critical", "area": "Title", "finding": "No <title> tag found.", "fix": "Add a descriptive title tag (50-60 chars)."})
+        issues.append({"severity": "Critical", "area": "Title", "finding": "No <title> tag found.", "fix": "Add a descriptive title tag that accurately identifies the article."})
     elif len(title) < 30:
-        issues.append({"severity": "Warning", "area": "Title", "finding": f"Title too short ({len(title)} chars).", "fix": "Expand title to 50-60 characters with primary keyword near the start."})
+        issues.append({"severity": "Info", "area": "Title", "finding": f"Title is relatively short ({len(title)} chars).", "fix": "Review for clarity and specificity; Google has no fixed title character limit."})
     elif len(title) > 65:
-        issues.append({"severity": "Warning", "area": "Title", "finding": f"Title may be truncated in SERPs ({len(title)} chars).", "fix": "Keep title under 60 characters."})
+        issues.append({"severity": "Info", "area": "Title", "finding": f"Title is relatively long ({len(title)} chars).", "fix": "Shorten only if clarity improves; displayed title links vary by query/device."})
 
     # Meta description
     if not meta:
-        issues.append({"severity": "Warning", "area": "Meta Description", "finding": "No meta description found.", "fix": "Add a compelling 120-155 character meta description with a CTA."})
+        issues.append({"severity": "Info", "area": "Meta Description", "finding": "No meta description found.", "fix": "Consider a concise page-specific description for snippet quality; Google may generate a snippet from page content."})
     elif len(meta) < 100:
-        issues.append({"severity": "Warning", "area": "Meta Description", "finding": f"Meta description too short ({len(meta)} chars).", "fix": "Expand to 120-155 characters."})
+        issues.append({"severity": "Info", "area": "Meta Description", "finding": f"Meta description is relatively short ({len(meta)} chars).", "fix": "Review for clarity only; there is no fixed Google length requirement."})
     elif len(meta) > 165:
-        issues.append({"severity": "Warning", "area": "Meta Description", "finding": f"Meta description may be truncated ({len(meta)} chars).", "fix": "Keep under 155 characters."})
+        issues.append({"severity": "Info", "area": "Meta Description", "finding": f"Meta description is relatively long ({len(meta)} chars).", "fix": "Keep the important message early; Google truncates snippets as needed."})
 
     # H1
     if not h1s:
-        issues.append({"severity": "Critical", "area": "H1", "finding": "No H1 tag detected.", "fix": "Add a single, descriptive H1 containing the primary keyword."})
+        issues.append({"severity": "Warning", "area": "H1", "finding": "No H1 tag detected.", "fix": "Add a clear primary heading if the article lacks one; do not treat exact H1 count as a ranking rule."})
     elif len(h1s) > 1:
-        issues.append({"severity": "Warning", "area": "H1", "finding": f"Multiple H1 tags found ({len(h1s)}).", "fix": "Use exactly one H1 per page."})
+        issues.append({"severity": "Info", "area": "H1", "finding": f"Multiple H1 tags found ({len(h1s)}).", "fix": "Review only if the heading hierarchy is confusing; Google does not require exactly one H1."})
 
-    # Word count (blog post minimum = 1,500)
-    if word_count < 300:
-        issues.append({"severity": "Critical", "area": "Content", "finding": f"Very thin content ({word_count} words).", "fix": "Expand content to at least 1,500 words for blog posts."})
-    elif word_count < 1000:
-        issues.append({"severity": "Warning", "area": "Content", "finding": f"Content may be thin for a blog post ({word_count} words).", "fix": "Aim for 1,500+ words of substantive, unique content."})
+    # Word count is descriptive only. Coverage should be judged against search intent,
+    # not a fixed article-length floor.
 
     # Author attribution (E-E-A-T)
     if not content.get("author"):
-        issues.append({"severity": "Warning", "area": "E-E-A-T", "finding": "No author attribution detected.", "fix": "Add a visible author byline with credentials. Critical post-Dec 2025 E-E-A-T update."})
+        issues.append({"severity": "Info", "area": "E-E-A-T", "finding": "No author attribution detected.", "fix": "For editorial/YMYL content, add author or reviewer information where it helps users assess expertise; E-E-A-T is not a standalone ranking factor."})
 
     # Publish date
     if not content.get("publish_date"):
@@ -515,7 +512,7 @@ def detect_seo_issues(content: dict, structured_data: list, readability: dict) -
     # Images: alt text
     missing_alt = [img for img in images if not img.get("alt")]
     if missing_alt:
-        issues.append({"severity": "Warning", "area": "Images", "finding": f"{len(missing_alt)} image(s) missing alt text.", "fix": "Add descriptive alt text (10-125 chars) to all non-decorative images."})
+        issues.append({"severity": "Warning", "area": "Images", "finding": f"{len(missing_alt)} image(s) missing alt text.", "fix": "Add useful contextual alt text to meaningful images; decorative images should use alt=\"\". No arbitrary character target is required."})
 
     # Images: lazy loading
     no_lazy = [img for img in images if img.get("loading") != "lazy" and img.get("src")]
