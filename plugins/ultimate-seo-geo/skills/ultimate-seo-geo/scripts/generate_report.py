@@ -1801,6 +1801,7 @@ def github_annotations(summary: dict) -> list:
 CHECK_LABELS = {
     "onpage": "On-page SEO",
     "schema_validation": "JSON-LD schema",
+    "ecommerce_schema": "E-commerce structured data",
     "canonical": "Canonical tags",
     "robots": "Robots.txt crawl rules",
     "ai_search_access": "AI search crawler access (robots.txt)",
@@ -2243,6 +2244,18 @@ def _check_panels(data: dict) -> dict:
              ("Critical", _esc(sch.get("critical_count", 0)))])
         + render_recommendations(sch)
     )
+
+    eco = get("ecommerce_schema")
+    panels["ecommerce_schema"] = (
+        _notice("SSD247 e-commerce validation. Product/Offer consistency is actionable; "
+                "store-level returns/shipping are not repeated as product defects.", "info")
+        + _kv([("Page type", _esc(eco.get("page_type", "—"))),
+               ("Schema objects", _esc(eco.get("schema_objects_found", 0))),
+               ("Product schema", _yes_no(eco.get("has_product_schema"))),
+               ("Critical", _esc(eco.get("critical_count", 0))),
+               ("Warnings", _esc(eco.get("warning_count", 0)))])
+        + render_recommendations(eco)
+    ) if eco else ""
 
     can = get("canonical")
     self_ref = can.get("is_self_referencing")
