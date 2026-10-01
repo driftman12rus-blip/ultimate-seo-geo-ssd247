@@ -494,10 +494,10 @@ def build_environment_fixes(data: dict) -> list:
     can_alt = can.get("summary", {}).get("alternate_pages", 0) if isinstance(can.get("summary"), dict) else 0
     if can_alt > 0:
         add(
-            "warning" if can_alt < 10 else "critical",
-            f"{can_alt} page(s) flagged as 'Alternate page with proper canonical'",
-            "These pages have non-self-referencing canonicals — Google won't index them.",
-            "If pages have unique content, change canonical to self-referencing. If true duplicates, consider 301 redirect to canonical target.",
+            "info",
+            f"{can_alt} page(s) use non-self-referencing canonicals",
+            "This can be intentional for duplicate/variant URLs and is not a defect by count alone.",
+            "Review only unexpected alternates against intended indexation and Search Console. Do not change intentional Shopify variant/filter canonicals solely because they are non-self-referencing.",
         )
 
     il_broken = len(il.get("broken_internal_pages", []))
@@ -1175,9 +1175,14 @@ def calculate_overall_score(data: dict) -> dict:
     # Duplicate content score
     dc = data["sections"].get("duplicate_content", {})
     if dc and not dc.get("error"):
-        dupes = len(dc.get("near_duplicates", []))
-        thin = len(dc.get("thin_pages", []))
-        dc_score = 100 - dupes * 20 - thin * 10
+        # Text similarity and word count are diagnostic only. Normal same-site
+        # duplication is not a Google spam penalty. Score only confirmed canonical
+        # conflicts emitted by the duplicate-content diagnostic.
+        confirmed = [
+            i for i in (dc.get("canonical_issues") or [])
+            if str(i.get("severity", "")).lower() in ("critical", "high", "warning")
+        ]
+        dc_score = 100 - len(confirmed) * 10
         scores["duplicate_content"] = max(0, min(100, dc_score))
     else:
         scores["duplicate_content"] = 0
