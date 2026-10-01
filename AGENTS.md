@@ -357,7 +357,7 @@ Scripts: `internal_links.py`, `broken_links.py`, `link_profile.py` → `referenc
 
 ## 10. Analytics & Reporting
 
-Minimum stack: GSC, GA4, PageSpeed Insights, rank tracker. Traffic drop diagnostic: impressions dropped → ranking issue; impressions stable + clicks fell → SERP feature change (AI Overviews absorbing clicks). AI traffic: Perplexity = `perplexity.ai` referral; ChatGPT = no referrer (Direct).
+Recommended measurement stack: GSC, GA4 and field/performance data as available. Diagnose traffic drops by separating impressions, positions, CTR, indexation and conversions; stable impressions with lower clicks can have multiple causes. AI referral attribution varies, so inspect actual source/medium, URL parameters and server logs rather than assuming a fixed referrer pattern.
 
 → `references/analytics-reporting.md`
 
