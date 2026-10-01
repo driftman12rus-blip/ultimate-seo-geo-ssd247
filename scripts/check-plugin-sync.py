@@ -52,6 +52,14 @@ def main() -> int:
             "Fix: bash setup-plugin.sh"
         )
 
+    for name in ("AGENTS.md", "SSD247-PROFILE.md"):
+        root_file = ROOT / name
+        plugin_file = ROOT / "plugins/ultimate-seo-geo/skills/ultimate-seo-geo" / name
+        if root_file.exists() != plugin_file.exists():
+            sys.exit(f"{name} presence mismatch between root and plugin bundle.\nFix: bash setup-plugin.sh")
+        if root_file.exists() and _read(root_file) != _read(plugin_file):
+            sys.exit(f"{name} mismatch between root and plugin bundle.\nFix: bash setup-plugin.sh")
+
     ref_root = ROOT / "references"
     ref_plugin = ROOT / "plugins/ultimate-seo-geo/skills/ultimate-seo-geo/references"
     if not ref_root.is_dir() or not ref_plugin.is_dir():

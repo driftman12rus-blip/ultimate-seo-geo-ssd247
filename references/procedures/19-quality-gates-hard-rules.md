@@ -44,13 +44,13 @@ This pattern is adapted from Anthropic's [Evaluator-Optimizer workflow](https://
 
 **AI citation ≠ ranking** — 85% of pages ChatGPT retrieves are never cited. Being retrieved is necessary but not sufficient.
 
-**Mentions > Backlinks for AI** — 0.664 vs. 0.218 correlation. Brand mentions on third-party platforms matter more than link building for AI citation.
+**AI brand signals** — third-party mentions may correlate with AI visibility, but correlation values are study-specific. Do not turn them into universal ranking weights or guaranteed effects.
 
 **Paid links risk manual action** — violates Google's spam policy. Recommend earning links through content quality instead.
 
 **Fake reviews risk GBP suspension** — Google actively detects fake review patterns. A suspended profile loses all local visibility.
 
-**Programmatic guardrails** — Warn at 100+ pages; hard stop at 500+ or <30% unique content. Google's March 2024 Core Update specifically targets thin scaled content.
+**Programmatic guardrail** — scale or text-similarity percentages alone are not defects. Escalate only when evidence shows scaled content created primarily to manipulate rankings with little user value, duplicate intent, doorway patterns, poor indexation, or similar concrete harm.
 
 **Blocking AI crawlers harms GEO** — Blocking OAI-SearchBot/PerplexityBot removes the site from AI search results entirely.
 

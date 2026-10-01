@@ -11,10 +11,10 @@
 
 | Element | Standard | Fix If Missing |
 |---|---|---|
-| Title tag | Unique, ≤60 chars, primary keyword present | Rewrite: `[Primary Keyword] — [Brand]` |
-| Meta description | Unique, 150–160 chars, no quotes | Write value-first: answer "why should I click?" |
-| H1 | One per page, matches title topic | Add single H1 matching the page's main intent |
-| URL | Lowercase, hyphens, descriptive, ≤100 chars | Redirect old URL → new clean URL + canonical |
+| Title tag | Unique, descriptive and aligned to page intent | Rewrite only if unclear/misleading; no fixed Google character limit |
+| Meta description | Useful page-specific summary where worthwhile | No fixed Google character limit; prioritize clarity and important details early |
+| Main heading | Clear visual/semantic page heading | Multiple H1s are not a Google SEO error; fix only confusing hierarchy/accessibility |
+| URL | Stable, descriptive where practical | Do not migrate/redirect working URLs only to satisfy an arbitrary length threshold |
 | Canonical | Self-referencing on every indexable page | Add `<link rel="canonical" href="[absolute-url]">` |
 
 **First check for any new site:** `site:yourdomain.com` in Google. Zero results = indexation problem → go to § 4 immediately.
@@ -51,7 +51,7 @@ Each metric has distinct causes and fixes. Diagnose first, then apply the most i
 - Check Network tab for which resource is rendering last as LCP
 
 **3 most common fixes:**
-1. **Optimize hero images**: Compress (use WebP), resize for viewport, add `rel="preload"` on critical images, use responsive srcset for different screen sizes
+1. **Optimize hero images**: resize/compress for the rendered viewport, use an efficient supported format, and verify whether preload/fetchpriority/srcset materially improves the measured LCP
 2. **Reduce server response time (TTFB)**: Use CDN, add caching headers (Cache-Control), optimize database queries, upgrade hosting if TTFB > 600ms
 3. **Remove render-blocking resources**: Defer non-critical CSS/JavaScript in `<head>`, move scripts to end of `<body>` or use `async`/`defer` attributes
 
@@ -102,7 +102,7 @@ Each metric has distinct causes and fixes. Diagnose first, then apply the most i
 - [ ] Submitted to Google Search Console and Bing Webmaster Tools
 
 **Crawl Depth**
-- [ ] All important pages reachable within 3 clicks of homepage
+- [ ] Important pages are reasonably discoverable through internal navigation; click depth is a diagnostic, not a fixed three-click rule
 - [ ] No orphan pages (pages with zero internal links pointing to them)
 - [ ] Internal linking connects related content
 
@@ -121,14 +121,14 @@ Each metric has distinct causes and fixes. Diagnose first, then apply the most i
 - [ ] Trailing slash consistent between page URL and canonical
 - [ ] Canonical target resolves to HTTP 200 (not 404, not redirect)
 - [ ] Canonical target has self-referencing canonical (no canonical chain)
-- [ ] No conflicts between canonical and noindex — never both on same page
+- [ ] Review non-self canonical + noindex combinations for conflicting intent; the mere coexistence is not automatically an error
 - [ ] Only one `<link rel="canonical">` tag per page (no duplicates)
 - [ ] HTTP Link header canonical (if present) matches HTML canonical
 - [ ] www and non-www redirect to single canonical domain (301)
 - [ ] HTTPS enforced — HTTP 301 redirects to HTTPS
 
 **Duplicate Content**
-- [ ] Pagination handled properly (noindex on paged archives, or proper canonical)
+- [ ] Pagination exposes crawlable links/items and does not use blanket canonical-to-page-1 rules for distinct pages
 - [ ] URL parameters not creating duplicate pages
 - [ ] Near-duplicate content addressed with canonical or consolidation
 
@@ -296,7 +296,7 @@ The LCP element is usually the hero image or largest above-fold text block.
 2. **If LCP is an image:**
    - Add `fetchpriority="high"` to the `<img>` tag
    - Remove `loading="lazy"` if present — never lazy-load the LCP image
-   - Serve in WebP format, sized to display dimensions
+   - Serve an efficient supported image format and size it to displayed dimensions
    - Self-host critical images where possible (avoids DNS overhead of third-party CDNs)
    - Add `<link rel="preload" as="image" href="hero.webp">` in `<head>`
 3. **If LCP is a text element (H1, paragraph):**

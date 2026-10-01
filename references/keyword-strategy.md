@@ -87,7 +87,7 @@ Every site should have content across all three stages:
 A comprehensive, authoritative guide targeting a high-volume head keyword. It's the "anchor" page for an entire topic cluster.
 
 ### Pillar Page Characteristics
-- **Length**: 3,000–5,000 words (comprehensive coverage of the topic)
+- **Depth**: comprehensive enough to cover the topic and linked subtopics; no fixed word-count target
 - **Breadth**: covers every subtopic of the head term
 - **Internal links**: links to all cluster content on related subtopics
 - **Format**: long-form guide, organized with clear H2/H3 structure

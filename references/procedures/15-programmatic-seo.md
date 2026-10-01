@@ -11,13 +11,9 @@
 5. **noindex thin records** from day one.
 6. **Human review** — 5–10% sample before publishing >100 pages.
 
-### Quality Gates (Non-Negotiable)
+### Quality review
 
-| Threshold | Action |
-|---|---|
-| >100 pages | ⚠️ WARNING — review content differentiation |
-| >500 pages OR <30% unique content | 🛑 HARD STOP |
-| <40% differentiation | Flag as thin content risk |
+Scale and measured text similarity are diagnostics, not automatic SEO violations. Do not create Critical/Warning findings from fixed page-count, word-count, or uniqueness-percentage thresholds alone. Escalate only when there is evidence of duplicate intent, substantially duplicate pages, doorway/scaled-abuse patterns, poor indexation, cannibalization, or other measurable search harm.
 
 **Don't**: Approve city pages where only the city name changes — March 2024 Core Update target (60–80% traffic declines seen).
 
@@ -28,6 +24,6 @@
 - **Result**: Google reported 45% reduction in low-quality, unoriginal content in search results post-March 2024
 - **Progressive rollout rule**: Publish in batches of 50–100 pages. Monitor indexing and rankings for 2–4 weeks before expanding. Never publish 500+ programmatic pages simultaneously without explicit quality review.
 
-**Automated audit**: Run `scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` to auto-detect template URL patterns and audit each group for boilerplate ratio, content uniqueness, title/description/H1 duplication, and cross-linking health. The script flags pages below the 30% uniqueness hard stop (scaled content abuse) and 40% warning threshold.
+**Automated audit**: Run `scripts/programmatic_seo_auditor.py URL --depth 2 --max-pages 100 --json` to auto-detect template URL patterns and audit each group for boilerplate ratio, measured content similarity, title/description/H1 duplication, and cross-linking health. Word count and uniqueness percentages are descriptive diagnostics only; they do not create defects by themselves.
 
 → See `references/programmatic-seo.md` (12 playbooks taxonomy, data-asset-to-playbook decision matrix, data defensibility hierarchy, Scaled Content Abuse enforcement timeline with dates, uniqueness calculation formula, progressive rollout strategy)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Duplicate & Thin Content Detector
+Duplicate Content Diagnostic
 
-Detects near-duplicate pages and thin content across a site using
-MinHash / Jaccard similarity and word-count thresholds.
+Detects exact and near-duplicate pages across a site using MinHash / Jaccard similarity.
+Word count is reported as a descriptive metric only; it is not an SEO defect threshold.
 
 Usage:
     python duplicate_content.py https://example.com --depth 2 --json
@@ -28,15 +28,6 @@ except ImportError:
 
 
 USER_AGENT = "Mozilla/5.0 (compatible; UltimateSEO-DupCheck/1.8)"
-
-# Quality gates from resources/references/quality-gates.md
-THIN_CONTENT_THRESHOLDS = {
-    "blog_post": 1500,
-    "landing_page": 800,
-    "product_page": 300,
-    "location_page": 350,
-    "default": 300,
-}
 
 
 # ---------------------------------------------------------------------------
@@ -232,31 +223,18 @@ def detect_duplicates(pages: dict, similarity_threshold: float = 0.85) -> dict:
                     continue
                 near_dupes.append({
                     "type": "near_duplicate",
-                    "severity": "Warning",
+                    "severity": "Info",
                     "similarity": round(sim, 3),
                     "url_a": urls[i],
                     "url_b": urls[j],
                     "word_count_a": pages[urls[i]]["word_count"],
                     "word_count_b": pages[urls[j]]["word_count"],
                     "finding": f"Pages are {sim:.0%} similar — likely near-duplicate content.",
-                    "fix": "Differentiate content significantly, or set one as canonical and noindex the other.",
+                    "fix": "Review whether the pages serve the same search intent. If they are intentional variants, no action may be needed; if they are true duplicates, consolidate signals with canonicalization or redirects as appropriate.",
                 })
 
-    # Step 3: Thin content
-    thin_pages = []
-    for url, data in pages.items():
-        wc = data["word_count"]
-        threshold = THIN_CONTENT_THRESHOLDS["default"]
-        if wc < threshold:
-            thin_pages.append({
-                "type": "thin_content",
-                "severity": "Warning" if wc >= 100 else "Critical",
-                "url": url,
-                "word_count": wc,
-                "threshold": threshold,
-                "finding": f"Only {wc} words (minimum: {threshold}).",
-                "fix": f"Expand content to at least {threshold} words of substantive, unique content, or noindex if low-value.",
-            })
+    # Step 3: Word-count diagnostics only. Google has no minimum word count.
+    # Keep the measurements in page records, but do not create thin-content defects.
 
     # Step 4: Canonical conflict detection
     canonical_issues = []
@@ -286,18 +264,15 @@ def detect_duplicates(pages: dict, similarity_threshold: float = 0.85) -> dict:
             if norm_a == norm_url_a and norm_b == norm_url_b:
                 canonical_issues.append({
                     "type": "duplicate_both_self_canonical",
-                    "severity": "High",
+                    "severity": "Info",
                     "url_a": url_a,
                     "url_b": url_b,
                     "similarity": pair["similarity"],
                     "finding": (
-                        f"Near-duplicate pages ({pair['similarity']:.0%} similar) both have "
-                        f"self-referencing canonicals. Google will choose one as canonical "
-                        f"and may ignore the other."
+                        f"Pages are {pair['similarity']:.0%} text-similar and both self-canonical. Similarity alone does not prove a canonical problem."
                     ),
                     "fix": (
-                        "Pick one as the canonical. Set the other's canonical to "
-                        "point to the primary page. Or differentiate the content."
+                        "Review search intent and indexation first. Consolidate only if the pages are genuinely duplicate/near-duplicate versions that should not both be indexed."
                     ),
                 })
 
@@ -335,12 +310,12 @@ def detect_duplicates(pages: dict, similarity_threshold: float = 0.85) -> dict:
         "pages_analyzed": len(pages),
         "exact_duplicates": exact_dupes,
         "near_duplicates": near_dupes,
-        "thin_content": thin_pages,
+        "thin_content": [],
         "canonical_issues": canonical_issues,
         "summary": {
             "exact_duplicate_groups": len(exact_dupes),
             "near_duplicate_pairs": len(near_dupes),
-            "thin_pages": len(thin_pages),
+            "thin_pages": 0,
             "canonical_issues": len(canonical_issues),
             "avg_word_count": round(
                 sum(p["word_count"] for p in pages.values()) / max(1, len(pages))
@@ -396,12 +371,6 @@ def main():
             print(f"     B: {pair['url_b']} ({pair['word_count_b']} words)")
             print(f"     Fix: {pair['fix']}")
 
-    if report["thin_content"]:
-        print(f"\nThin Content ({report['summary']['thin_pages']} pages):")
-        for page in sorted(report["thin_content"], key=lambda x: x["word_count"]):
-            icon = "🔴" if page["severity"] == "Critical" else "⚠️"
-            print(f"  {icon} {page['url']} — {page['word_count']} words (min: {page['threshold']})")
-
     if report.get("canonical_issues"):
         print(f"\nCanonical Issues ({len(report['canonical_issues'])}):")
         for issue in report["canonical_issues"]:
@@ -410,7 +379,7 @@ def main():
             print(f"     Fix: {issue['fix']}")
 
     if (not report["exact_duplicates"] and not report["near_duplicates"]
-            and not report["thin_content"] and not report.get("canonical_issues")):
+            and not report.get("canonical_issues")):
         print("\n✅ No duplicate, thin content, or canonical issues detected.")
 
 

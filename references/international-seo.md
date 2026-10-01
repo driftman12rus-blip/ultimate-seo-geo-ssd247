@@ -64,7 +64,7 @@ It does NOT affect rankings — it controls which version appears for which audi
   <link rel="alternate" hreflang="de"    href="https://example.com/de/page/">
   <link rel="alternate" hreflang="pt-BR" href="https://example.com/pt-br/page/">
 
-  <!-- Fallback for unmatched languages/regions (REQUIRED) -->
+  <!-- Optional/recommended fallback for unmatched languages/regions -->
   <link rel="alternate" hreflang="x-default" href="https://example.com/page/">
 </head>
 ```
@@ -127,7 +127,7 @@ It does NOT affect rankings — it controls which version appears for which audi
 
 1. **Self-referencing**: Every page must include an hreflang tag pointing to itself
 2. **Return tags**: If page A links to page B, page B MUST link back to page A (bidirectional)
-3. **x-default**: Must exist on every page set to designate the fallback URL
+3. **x-default**: Recommended when a neutral/fallback URL is useful; not required on every hreflang set
 4. **Canonical URLs only**: Hreflang tags must use the canonical URL (not redirects, not parameter variants)
 5. **Consistent URLs**: Every reference to a URL must be exactly identical (trailing slash, protocol, www)
 6. **Canonical stays within the language**: each language version must canonicalize to **itself**, or at worst to the closest substitute language — never across languages to a single "main" version. Rule 4 says hreflang must point at canonical URLs; this is the distinct failure it does not cover. A French page carrying `<link rel="canonical" href="…/en/page">` tells Google the French page is a duplicate of the English one, which collapses the whole language cluster to one indexed URL and silently voids the hreflang set — the tags are syntactically valid and do nothing. This is the most common way a technically correct hreflang implementation produces no result.

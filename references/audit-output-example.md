@@ -31,7 +31,7 @@ Source: generate_report.py — 21 weighted checks measured; not measured: none. 
 
 Finding: No Organization or SoftwareApplication schema on any page
 Evidence: 0 JSON-LD blocks found across 8 pages; competitors average 3 schema types
-Impact: Missing rich results; 0% AI citation eligibility — schema increases citation ~2.5×
+Impact: Structured-data eligibility/consistency gap; AI citation impact is not quantified.
 Fix: Add Organization schema to homepage, SoftwareApplication + AggregateRating to /pricing
 Confidence: Confirmed | Severity: 🟠 High
 First-Principle Observation: Raw HTML of all 8 pages contains zero <script type="application/ld+json"> elements.
@@ -42,7 +42,7 @@ Leading Indicator: Rich Results Test passes within 1 week; GSC "Enhancements" sh
 Finding: LCP 4.8s on homepage — hero image is 1.2MB unoptimized PNG
 Evidence: PageSpeed Insights mobile score 38; LCP element: <img src="/hero-dashboard.png">
 Impact: Poor CWV = deprioritized in mobile rankings; FCP > 0.4s reduces AI citations by 3×
-Fix: Convert to WebP (target <200KB), add fetchpriority="high", preload via <link>
+Fix: Optimize the actual delivered hero bytes/dimensions and verify the LCP resource; use preload/fetchpriority only if measurement supports it.
 Confidence: Confirmed | Severity: 🟠 High
 First-Principle Observation: PSI reports LCP = 4.8s; the LCP element is a 1.2MB PNG with no srcset, no fetchpriority, no preload.
 Dependency: Independent of schema fixes. Unblocks "improve mobile rankings" and "reduce bounce rate."
@@ -86,7 +86,7 @@ Confidence: Confirmed
 Finding: No structured data detected on /pricing or /features
 Evidence: 0 JSON-LD blocks across 12 pages; <script type="application/ld+json"> absent
 Impact: No rich result eligibility; competitors with SoftwareApplication schema
-        have ~2.5× higher AI citation rate
+        can improve machine-readable facts; no fixed AI-citation multiplier is assumed
 Fix: [External Observation Only — SoftwareApplication + AggregateRating recommended]
 Confidence: Confirmed
 
@@ -112,7 +112,7 @@ Date: 2026-03-22 | Focus: AI Search Citation | Pages Reviewed: 6
 | # | Question | Status |
 |---|----------|--------|
 | 1 | AI crawlers allowed in robots.txt? | ✅ Yes — OAI-SearchBot, Claude-SearchBot, PerplexityBot all allowed |
-| 2 | Key answer in first 60 words? | ❌ No — /features answers "What is TaskForge?" in paragraph 4 |
+| 2 | Key answer easy to find? | Review — /features defines TaskForge only in paragraph 4; test whether moving it improves users/citations |
 | 3 | Content in raw HTML (not JS-only)? | ✅ Yes — Next.js with SSR |
 | 4 | Named author with credentials? | ❌ No — blog posts have no author bylines |
 | 5 | Brand on YouTube or Reddit? | ❌ No presence on either platform |
@@ -132,8 +132,8 @@ Date: 2026-03-22 | Focus: AI Search Citation | Pages Reviewed: 6
 Finding: Zero brand presence on YouTube, Reddit, or Wikipedia
 Evidence: YouTube search "TaskForge project management" — 0 results.
           Reddit search — 0 mentions. Wikipedia — no article or Wikidata entity.
-          Brand mentions correlate 3× more strongly with AI citations than backlinks (0.664 vs 0.218).
-Impact: Invisible to ChatGPT (47.9% of citations from Wikipedia) and Perplexity
+          Some studies report stronger correlation for brand mentions than backlinks; this is not a causal 3× rule.
+Impact: Possible entity-disambiguation gap; verify with repeated AI answers before prioritizing.
         (46.7% from Reddit). Highest-leverage gap.
 Fix: 1) Create YouTube demo/tutorial (target "TaskForge vs [competitor]" queries).
      2) Post in r/projectmanagement and r/SaaS with genuine value.
@@ -148,7 +148,7 @@ Leading Indicator: Brand mentions in the citation sample (§ 3) within 8–12 we
 
 Finding: Key product answer buried below fold on /features
 Evidence: "What is TaskForge?" answered in paragraph 4 (~320 words in).
-          44.2% of AI citations come from first 30% of content — this page fails.
+          Some studies favor earlier answers; this is an experiment trigger, not a pass/fail rule.
 Impact: Low citation rate for core product query in AI Overviews and Perplexity.
 Fix: Move the direct answer to opening paragraph: "TaskForge is a [one-sentence
      definition with key differentiator]." Keep feature details below.
@@ -172,7 +172,7 @@ REWRITTEN (citable — 142 words, direct answer first, stat-backed)
   Unlike traditional PM tools, TaskForge uses LLM-based task decomposition
   to break epics into estimated subtasks automatically."
 
-WHY IT'S CITABLE: Self-contained (142 words), direct answer in first sentence,
+WHY IT MAY BE EASIER TO CITE: self-contained, direct answer first,
 specific stat (34%, 1,200 teams), clear differentiator — matches AI system
 preference for concise, source-attributed passages.
 ```

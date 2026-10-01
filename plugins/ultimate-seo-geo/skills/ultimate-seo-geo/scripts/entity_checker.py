@@ -205,13 +205,12 @@ def sameas_gap_issue(missing: dict, wikidata_found: bool, wikipedia_found: bool)
         return None
     names = ", ".join(f"{name} ({data['kg_signal']})" for name, data in askable.items())
     issue = {
-        "severity": "Warning" if any(d["priority"] == "Critical" for d in askable.values()) else "Info",
+        "severity": "Info",
         "area": "sameAs",
         "code": "entity.sameas_missing",
-        "finding": f"Entity schema sameAs is missing {len(askable)} profile link(s): {names}.",
+        "finding": f"Entity schema does not list {len(askable)} existing profile link(s): {names}.",
         "evidence": "sameAs has no URL on " + ", ".join(d["domain"] for d in askable.values()),
-        "fix": "Add the URL of each profile that exists to the sameAs array of the Organization or Person schema; "
-               "skip any the entity does not have.",
+        "fix": "Optional: add accurate sameAs URLs for real official profiles when they help entity disambiguation. Do not create profiles solely to satisfy this check.",
         "lane": "Human",
         "lane_reason": "Needs the profile URLs, which only the owner knows; adding them to the schema is then a safe edit.",
         "platforms": list(askable),
@@ -396,26 +395,26 @@ def run_entity_check(url: str, entity_name: str = "", kg_api_key: str = "") -> d
 
     if not entities:
         issues.append({
-            "severity": "Critical",
+            "severity": "Info",
             "area": "Schema",
             "finding": "No Organization/Person entity found in JSON-LD.",
-            "fix": "Add Organization or Person schema with name, url, logo, and sameAs properties.",
+            "fix": "Review site-level Organization markup on the homepage/theme if useful. Its absence on an individual product page is not a ranking defect.",
         })
 
     if entities and not all_same_as:
         issues.append({
-            "severity": "Critical",
+            "severity": "Info",
             "area": "sameAs",
             "finding": "Entity schema exists but has no sameAs properties.",
-            "fix": "Add sameAs URLs pointing to Wikipedia, LinkedIn, Twitter/X, etc.",
+            "fix": "Optional: add only real official profile URLs that improve entity disambiguation; sameAs is not a platform-presence quota.",
         })
 
     if not wikidata["found"]:
         issues.append({
-            "severity": "Warning",
+            "severity": "Info",
             "area": "Wikidata",
             "finding": f"No Wikidata entry found for '{entity_name}'.",
-            "fix": "Create a Wikidata item for your entity with accurate properties to improve Knowledge Graph presence.",
+            "fix": "No action required solely for SEO. Consider Wikidata only when the entity independently qualifies and disambiguation is useful.",
         })
 
     if not wikipedia["found"]:
@@ -423,7 +422,7 @@ def run_entity_check(url: str, entity_name: str = "", kg_api_key: str = "") -> d
             "severity": "Info",
             "area": "Wikipedia",
             "finding": f"No Wikipedia article found for '{entity_name}'.",
-            "fix": "Pursue notability through press coverage and third-party references. Wikipedia articles significantly boost Knowledge Panel eligibility.",
+            "fix": "No action required solely for SEO. Wikipedia requires independent notability; do not pursue an article just to satisfy the audit.",
         })
 
     gap = sameas_gap_issue(sameas_analysis.get("missing", {}), wikidata["found"], wikipedia["found"])

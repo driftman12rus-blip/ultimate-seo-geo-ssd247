@@ -31,18 +31,18 @@ Google has escalated action against scaled content abuse:
 |---|---|
 | **Helpful content system (2022 – merged into core, March 2024)** | No longer a separate system or a separate update to watch for. Helpfulness is now weighted continuously inside core, so the site-wide effect persists — a significant portion of unhelpful content can still deprioritize the rest — but it arrives through core updates, not a distinct HCU event. Do not tell a client to "wait for the next Helpful Content update" |
 | **March 2024 Core Update** | Explicitly targeted "scaled content abuse" — pages created at scale to manipulate rankings with little unique value |
-| **2025 Continued Enforcement** | Sites with >40% thin programmatic content saw 60-80% traffic declines |
+| **2025 Continued Enforcement** | Some large programmatic sites have experienced severe traffic declines when substantial portions provided little unique value |
 
 **The threshold**: Google doesn't penalize scale itself — it penalizes pages where the only difference is a substituted variable (city name, product name) with no genuinely unique content.
 
 ---
 
-## Quality Gates (Non-Negotiable)
+## Quality Review
 
 | Threshold | Action | Reason |
 |---|---|---|
-| Planning >100 pages | ⚠️ **WARNING** — review content differentiation plan before building | Ensure template design includes genuine unique value per page |
-| Planning >500 pages OR <30% unique content per page | 🛑 **HARD STOP** — requires explicit quality justification | Google's scaled content abuse threshold |
+| Large-scale rollout | Review the content/value model before publishing | Scale itself is not a violation; assess whether pages serve distinct user/search needs |
+| Low measured uniqueness | Treat as a diagnostic signal, not an automatic defect | Percentage similarity does not prove scaled content abuse; validate intent, duplication, indexation and usefulness |
 | Content differentiation <40% between pages | Flag as thin content risk | Below this threshold, pages are functionally duplicate |
 | No human review before launch | ⚠️ **WARNING** | Require 5-10% sample human review before publishing |
 

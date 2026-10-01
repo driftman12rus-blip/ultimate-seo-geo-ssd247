@@ -24,6 +24,10 @@ clear fix directive — not just diagnosis.
 
 **This file is the routing shell.** Detailed step-by-step procedures for §1–§26 live under `references/procedures/` — read them only when the user's task requires that section (see §0 below). Domain knowledge tables live in `references/*.md` as before.
 
+## SSD247 fork override
+
+When auditing SSD247, read `SSD247-PROFILE.md` first. Its store-specific rules override generic heuristic thresholds elsewhere in this repository.
+
 ## 0. Before You Start
 
 ### Routing index (read only what you need)

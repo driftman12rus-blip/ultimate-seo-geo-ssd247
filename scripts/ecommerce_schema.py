@@ -444,10 +444,9 @@ def validate_category_page(schema_objects: list[dict]) -> list[dict]:
 
     if has_product:
         findings.append({
-            "finding": "Category page has Product schema (should use CollectionPage or ItemList)",
-            "severity": "warning",
-            "fix": "Replace Product schema with CollectionPage or ItemList on category pages. "
-                   "Product schema should only appear on individual product detail pages.",
+            "finding": "Category page contains Product schema objects",
+            "severity": "info",
+            "fix": "Review only if the markup is misleading or invalid. Product objects on a collection page are not automatically an SEO defect; validate the rendered structured data and intended eligible features.",
         })
 
     if not has_collection:
@@ -543,32 +542,22 @@ def run_audit(url: str) -> dict:
 
         if not has_breadcrumb:
             findings.append({
-                "finding": "Product page missing BreadcrumbList schema",
-                "severity": "warning",
-                "fix": "Add BreadcrumbList schema showing category hierarchy",
-            })
-
-        if not has_return_policy:
-            findings.append({
-                "finding": "No MerchantReturnPolicy schema found (required for merchant listing features since March 2025)",
-                "severity": "warning",
-                "fix": "Add MerchantReturnPolicy with returnPolicyCountry and returnPolicyCategory",
-            })
-
-        if not has_shipping:
-            findings.append({
-                "finding": "No OfferShippingDetails schema found",
+                "finding": "Product page has no BreadcrumbList schema",
                 "severity": "info",
-                "fix": "Add OfferShippingDetails for shipping info display in search results",
+                "fix": "Optional: add BreadcrumbList when it accurately reflects the visible hierarchy and is useful for eligible breadcrumb features.",
             })
+
+        # SSD247 already has store-level returns/shipping implementation. Absence of
+        # redundant per-product MerchantReturnPolicy/OfferShippingDetails is not a defect.
+        # When those objects are present, their fields are still validated above.
 
     elif page_type == "category":
         findings.extend(validate_category_page(schema_objects))
         if not has_breadcrumb:
             findings.append({
-                "finding": "Category page missing BreadcrumbList schema",
-                "severity": "warning",
-                "fix": "Add BreadcrumbList schema showing category hierarchy",
+                "finding": "Category page has no BreadcrumbList schema",
+                "severity": "info",
+                "fix": "Optional: add BreadcrumbList when it accurately reflects the visible collection hierarchy.",
             })
 
     critical_count = sum(1 for f in findings if f["severity"] == "critical")

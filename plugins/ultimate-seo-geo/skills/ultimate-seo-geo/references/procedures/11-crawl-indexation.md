@@ -9,13 +9,13 @@
 1. `site:domain.com` in Google. Large discrepancy = investigation needed.
 2. **GSC Coverage** — "Crawled - currently not indexed" (thin content) and "Submitted URL not indexed." Check "Not found (404)" for pages Google tried to index but got 404. **Week over week:** export Page indexing each week (the report is not in the API) and run `python scripts/index_coverage_diff.py last-week.zip this-week.zip --shipped shipped.txt`. It reports only reasons that moved (≥50 URLs, or ≥5% on ≥10 URLs), sorts them into technical (robots.txt, noindex, 4xx/5xx: the site blocks Google), quality ("Crawled - currently not indexed", duplicates: Google declined; resubmitting does nothing), discovery ("Discovered - currently not indexed") and expected (redirects, alternates), ties each move to the shipped notes, and names one reason to investigate: technical rises first, then a fall in Indexed. `--examples OLD.csv NEW.csv --sitemap URL` lists the example URLs that entered a reason and which of them are submitted in the sitemap; Search Console caps those lists at 1,000, so treat them as a sample.
 3. **Sitemap URL health** — Run `scripts/sitemap_checker.py` with URL sampling. Every sitemap URL must return 200. Flag: 404s, 5xx errors, soft 404s, redirects in sitemap. Note: `<priority>` and `<changefreq>` tags are ignored by Google and Bing — omit them from new sitemaps; they add size without benefit.
-4. **Search/template URL indexation** — Check sitemap for search result URLs (`?q=`, `?search=`, `{search_term_string}`) and faceted URLs (`?sort=`, `?filter=`). These must never appear in sitemaps. Fix: remove from sitemap, add `<meta name="robots" content="noindex">`, block in robots.txt.
+4. **Search/template/faceted URL hygiene** — keep non-indexable utility URLs out of sitemaps. Choose either crawl blocking for low-value crawl spaces or crawlable `noindex` when removal from the index is required. Do not recommend robots.txt and `noindex` together for the same URL pattern because a blocked URL cannot expose its `noindex` directive.
 5. **Soft 404 detection** — Run `scripts/broken_links.py` to detect pages returning HTTP 200 but showing "not found" content. Fix: return real 404/410 or restore genuine content.
 6. **Site-wide broken internal links** — Run `scripts/broken_links.py --crawl` or `scripts/internal_links.py` to find internal pages returning 404/5xx. Each broken internal link wastes crawl budget and breaks link equity.
 7. **Pages with redirect** — Run `scripts/redirect_checker.py --graph site_graph.json` for the whole site: it follows every internal link whose written URL is not where its page ends up (a `/gallery` → `/gallery/` slash redirect included), hop by hop, and ranks them by how many pages link to them. A link in the header, nav or footer is flagged: one template edit fixes it on every page. Chains of 2+ hops, loops and redirects that end in an error are the high-risk group (the redirect rules change); single hops only need the links updated. A suspect that serves directly (both `/x` and `/x/` answer 200) is not a redirect and is not reported as one. Or run `scripts/internal_links.py` to find internal links pointing to URLs that redirect. GSC reports these as "Page with redirect." Fix: update all internal links to point to the final destination URL. Remove redirect URLs from the sitemap.
 8. **Alternate page detection** — Run `scripts/canonical_checker.py --crawl` to find pages with non-self-referencing canonicals. GSC reports these as "Alternate page with proper canonical tag." If these pages have unique content that should be indexed, change their canonical to self-referencing. If they are true duplicates, 301 redirect to the canonical target.
-9. **Canonical conflicts** — No page with both `noindex` and a canonical tag.
-10. **URL parameter handling** — Parameter variants must canonical to master page.
+9. **Canonical + noindex review** — the combination is not automatically an error. Review whether the directives express conflicting intent, especially a non-self canonical plus `noindex`.
+10. **URL parameter handling** — classify parameter patterns first. Tracking/sort duplicates may canonicalize to a clean URL; useful filter/variant landing pages may deserve their own indexation strategy.
 
 ### GSC "Not Found (404)" Remediation
 
@@ -26,7 +26,7 @@ When GSC reports pages as "Not found (404)", apply this decision tree per URL:
 | Content moved to new URL | Add 301 redirect old → new; update sitemap and internal links |
 | Content permanently deleted | Return 404 or 410; remove from sitemap; remove internal links |
 | Content should exist but is broken | Fix the page; ensure it returns 200 |
-| Search/template URL (e.g. `?q={search_term_string}`) | Remove from sitemap; add noindex to search pages; block crawling via robots.txt |
+| Search/template URL (e.g. `?q={search_term_string}`) | Remove from sitemap; choose crawlable `noindex` for de-indexation OR robots.txt for long-term crawl suppression, not both at once |
 | URL was never valid (typo, outdated) | Let 404 stand; remove from sitemap; fix any internal links pointing to it |
 
 ### GSC "Page with redirect" Remediation
@@ -62,7 +62,7 @@ When GSC reports pages as "Alternate page with proper canonical tag" — these p
 6. **Trailing slash consistency** — Page URL and canonical must agree on trailing slash convention.
 7. **Canonical target resolves** — The canonical URL must return HTTP 200. Canonical → 404 or redirect = Google ignores it.
 8. **No canonical chains** — The canonical target's own canonical should be self-referencing. If A → B → C, Google picks C and ignores your preference.
-9. **No noindex + canonical conflict** — Never combine `<meta name="robots" content="noindex">` with a non-self canonical. Use one or the other.
+9. **Review noindex + non-self canonical** — these signals express different intents. Prefer a clear strategy rather than treating the combination as an automatic technical failure.
 10. **Single canonical tag** — Only one `<link rel="canonical">` per page. Multiple tags = unpredictable behavior.
 
 ### GSC "Google Chose Different Canonical" Remediation
@@ -87,8 +87,8 @@ When GSC reports "Duplicate, Google chose different canonical than user":
 | www vs. non-www | 301 redirect one to the other + canonical |
 | HTTP vs. HTTPS | 301 redirect HTTP → HTTPS |
 | URL parameters | Canonical → master page |
-| noindex + canonical conflict | Use one or the other — never both |
+| noindex + non-self canonical | Review intent; use a clear de-indexation or consolidation strategy |
 
-**Sitemap health**: submitted/indexed ratio >90% = healthy; <70% = investigate content quality or canonicalization.
+**Sitemap health**: submitted/indexed ratios are context, not universal pass/fail thresholds. Investigate meaningful changes by page type and indexing reason.
 
 → See `references/crawl-indexation.md` | Run `scripts/sitemap_checker.py --sample 50` Run `scripts/canonical_checker.py --crawl` Run `scripts/internal_links.py` Run `scripts/broken_links.py --crawl`

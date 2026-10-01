@@ -424,7 +424,7 @@ def crawl_site(start_url: str, max_depth: int = 2, max_pages: int = 50,
         )
     if result["link_distribution"]["avg"] < 5:
         result["recommendations"].append(
-            "Increase internal linking — aim for 3-5 relevant links per 1000 words"
+            "Review whether important pages are sufficiently connected for users and crawling; do not target a fixed links-per-word quota."
         )
 
     return result

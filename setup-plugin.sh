@@ -51,6 +51,11 @@ if [ -f "AGENTS.md" ]; then
   echo "  AGENTS.md copied ✓"
 fi
 
+if [ -f "SSD247-PROFILE.md" ]; then
+  cp SSD247-PROFILE.md plugins/ultimate-seo-geo/skills/ultimate-seo-geo/SSD247-PROFILE.md
+  echo "  SSD247-PROFILE.md copied ✓"
+fi
+
 if [ -f "GEMINI.md" ]; then
   cp GEMINI.md plugins/ultimate-seo-geo/skills/ultimate-seo-geo/GEMINI.md
   echo "  GEMINI.md copied ✓"

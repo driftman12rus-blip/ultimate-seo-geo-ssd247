@@ -4,19 +4,19 @@
 
 ### Audit — Step by Step
 
-1. **Check each `<img>`** — alt text? Declared width/height? WebP format?
+1. **Check each `<img>`** — meaningful/decorative alt handling, rendered dimensions, actual delivered bytes/format, and responsive behavior.
 2. **Identify LCP image** — Confirm `fetchpriority="high"` and NOT lazy-loaded.
 3. **Check file sizes** — DevTools Network, actual KB per image.
-4. **Fix missing alt text** — Descriptive, 10–125 chars.
+4. **Fix alt handling** — meaningful images get concise contextual alt text; decorative images use `alt=""`. No arbitrary character target.
 5. **Check responsive images** — `srcset` and `sizes` on content images.
 
 ### Checklist + Fix Directives
 
 | Element | Standard | Fix |
 |---|---|---|
-| Alt text | Descriptive, 10–125 chars | "[what + context]" e.g. "White ceramic mug on wooden desk" |
-| Format | WebP preferred | Convert to WebP; AVIF for cutting-edge |
-| File size | Thumbnails <50KB; content <100KB; heroes <200KB | Squoosh/Cloudinary; CDN compression |
+| Alt text | Useful and contextual for meaningful images; empty for decorative images | Describe what matters in context; no fixed SEO character count |
+| Format | Use an efficient supported format based on actual delivery | JPEG/PNG/WebP/AVIF are valid; optimize bytes/quality and verify CDN negotiation |
+| File size | No universal KB threshold; evaluate against visual quality and CWV/network cost | Resize/compress appropriately and verify actual transfer size |
 | Responsive | `srcset` and `sizes` | Add multi-resolution srcset |
 | Lazy loading | Below-fold only | Never lazy-load LCP image |
 | Dimensions | `width` and `height` on all `<img>` | Prevents CLS |

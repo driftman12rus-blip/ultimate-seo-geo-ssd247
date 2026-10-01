@@ -16,6 +16,10 @@ clear fix directive — not just diagnosis.
 
 **Reading budget:** load at most **3 files** from `references/` per response (procedure files count toward that limit). The Routing Index below says which ones.
 
+## SSD247 fork override
+
+For SSD247 audits, read `SSD247-PROFILE.md` before applying e-commerce or programmatic SEO rules. The profile overrides generic word-count, uniqueness, faceted-navigation, and return/shipping heuristics.
+
 ## 0. Before You Start
 
 ### Routing Index
@@ -170,19 +174,19 @@ Do not state metrics unless the corresponding script ran:
 
 ### SEO Health Score Weights
 
-Category shares of the `generate_report.py` score when every check is measured (§ 2 lists the checks):
+Category shares of the SSD247 `generate_report.py` score when every weighted check is measured (§ 2 lists the checks). Security headers, social preview metadata, readability, entity/Wikipedia/Wikidata signals, and IndexNow remain visible diagnostics but carry zero score weight:
 
 | Category | Weight |
 |---|---|
-| Technical SEO | 32% |
-| Content quality / E-E-A-T | 18% |
-| On-page SEO | 11% |
-| Link authority | 11% |
-| Core Web Vitals | 10% |
-| AI search readiness (GEO) | 10% |
-| Schema / structured data | 4% |
-| Images | 2% |
-| Local SEO | 2% |
+| Technical SEO | 31% |
+| Content quality / E-E-A-T | 14% |
+| On-page SEO | 10% |
+| Link authority | 14% |
+| Core Web Vitals | 12% |
+| AI search readiness (GEO) | 8% |
+| Schema / structured data | 5% |
+| Images | 3% |
+| Local SEO | 3% |
 
 ### Finding Format
 
@@ -257,7 +261,7 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 | # | Question | If No → Fix |
 |---|---|---|
 | 1 | AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — scoped rule in `references/procedures/03-geo-ai-search.md` |
-| 2 | Page answers target query in first 60 words? | Move answer to opening paragraph |
+| 2 | Is the primary answer/product fact easy to find? | Improve clarity if user testing or citation sampling shows it is buried; no fixed word cutoff |
 | 3 | Content in raw HTML (not JS-only)? | Implement SSR |
 | 4 | Named author with credentials + publication date? | Add author bio + date |
 | 5 | Brand mentioned on YouTube or Reddit? | Start presence on missing platform |
@@ -269,7 +273,7 @@ Citability 25% · Structural Readability 20% · Authority & Brand Signals 20% ·
 `references/procedures/03-geo-ai-search.md`. **Technical Accessibility does not include llms.txt** —
 Google confirmed (June 2026) that Search ignores it.
 
-**Key insight**: 44.2% of AI citations come from the first 30% of content.
+**GEO note**: front-loading clear answers can be tested as a citability experiment, but exact placement percentages are study-specific and are not platform requirements.
 
 Scripts: `robots_checker.py`, `entity_checker.py`, `preferred_sources_checker.py`, `social_meta.py`
 
@@ -294,12 +298,11 @@ procedure with script names: `references/procedures/04-technical-seo.md`.
 Google Search or AI Overviews. `GPTBot` blocks OpenAI *training* only — ChatGPT Search citations use
 `ChatGPT-User`.
 
-**Key rule**: serve canonical, meta robots, structured data, title, meta description and hreflang in
-the **initial server-rendered HTML**, never JS-only.
+**Reliability preference**: serve critical SEO elements in initial HTML where practical, especially fast-changing commerce facts. Google can render JavaScript, so JS-only is not automatically a defect; verify rendered output and target-crawler behavior.
 
 ## 5. Schema / Structured Data
 
-Always use JSON-LD. Schema improves AI citation likelihood ~2.5×.
+Prefer JSON-LD where practical. Structured data can help search engines understand eligible entities/features, but do not claim a fixed AI-citation multiplier.
 
 ### Priority Schema by Site Type
 
@@ -320,11 +323,11 @@ Script: `validate_schema.py`
 
 ## 6. Content Quality & E-E-A-T
 
-E-E-A-T is universal for all competitive queries (December 2025). AI content acceptable if genuine E-E-A-T; penalized without unique value. Google AI Mode (180+ countries) delivers zero blue links — AI citation is the only visibility.
+E-E-A-T is a useful quality framework, not a standalone Google ranking factor. Evaluate helpfulness, accuracy, experience/expertise and trust in context, with stricter scrutiny for YMYL. Do not invent penalties or universal query rules.
 
 **Functional page exemption:** Sign up, sign in, log in, register, create account, forgot/reset password, membership enroll, checkout, cart, account dashboard, profile settings — these are task-completion UI pages. Do NOT flag them as thin content. Do NOT recommend adding more copy. Applicable checks: title accuracy, meta description, form labels, trust signals, schema.
 
-Key checks (content/marketing pages only): Named author with credentials? First-hand experience signals? Word count floors (blog 1,500+, service 800+, homepage 500+) — but thoroughness matters more than count. Thin content signals: copied definitions, no original research, no author bio.
+Key checks (content/marketing pages only): Does the page satisfy its search/user intent? Are claims accurate and useful? Word count is diagnostic only — Google has no minimum. Thin/low-value content must be evidenced by duplication, missing substance, poor indexation, or weak usefulness rather than a fixed length.
 
 For the full E-E-A-T scoring framework, CORE-EEAT 80-item benchmark, and CITE domain rating → read `references/procedures/06-content-eeat-and-pruning.md` and `references/eeat-framework.md`, `references/core-eeat-framework.md`, `references/cite-domain-rating.md`.
 
@@ -336,9 +339,9 @@ Scripts: `article_seo.py`, `readability.py`, `duplicate_content.py`
 
 **Keywords (§ 7):** Classify by intent (Informational/Commercial/Transactional). Identify funnel gaps (TOFU/MOFU/BOFU). Opportunity Score: `(Volume × Intent Value) / Difficulty`. → `references/keyword-strategy.md`
 
-**Topic Clusters (§ 7b):** Pillar page (3,000–5,000 words) links to all cluster posts. Cluster posts (1,500–2,500 words) link back. Enforce bidirectional linking. No two posts targeting the same primary keyword.
+**Topic Clusters (§ 7b):** Organize related pages when it helps users and internal discovery. Do not enforce fixed pillar/cluster word counts or mandatory bidirectional-link quotas; resolve actual intent overlap/cannibalization with evidence.
 
-**AEO / Featured Snippets (§ 7c):** Answer in 40–60 words after question-format H2/H3. Lists: 5–9 items. Tables: ≤4 columns. Lead with direct answer. → `references/schema-types.md` for Speakable/SearchAction.
+**AEO / Featured Snippets (§ 7c):** Give concise direct answers and use lists/tables when they fit the query. Do not require fixed answer lengths, item counts, table widths or question-format headings.
 
 **Competitors (§ 8):** Identify 3–5 competitors. Assess across: content depth, missing clusters, schema, AI citations, E-E-A-T, AI crawler config, llms.txt. Run `robots_checker.py` and `llms_txt_checker.py` on competitors (label "External Observation Only").
 
@@ -346,7 +349,7 @@ Scripts: `article_seo.py`, `readability.py`, `duplicate_content.py`
 
 ## 9. Link Building & Internal Linking
 
-Internal linking first — highest leverage, zero cost. Orphan pages = zero allowed. Anchor text: 40–50% branded, 5–10% exact match (>20% = over-optimization). Link density: 3–5 per 1,000 words. Never recommend paid link schemes.
+Use internal links where they help discovery, hierarchy and users. Investigate important orphan pages, but do not enforce fixed anchor-text percentages or links-per-1,000-words quotas. Never recommend paid link schemes.
 
 Scripts: `internal_links.py`, `broken_links.py`, `link_profile.py` → `references/link-building.md`
 
@@ -354,7 +357,7 @@ Scripts: `internal_links.py`, `broken_links.py`, `link_profile.py` → `referenc
 
 ## 10. Analytics & Reporting
 
-Minimum stack: GSC, GA4, PageSpeed Insights, rank tracker. Traffic drop diagnostic: impressions dropped → ranking issue; impressions stable + clicks fell → SERP feature change (AI Overviews absorbing clicks). AI traffic: Perplexity = `perplexity.ai` referral; ChatGPT = no referrer (Direct).
+Recommended measurement stack: GSC, GA4 and field/performance data as available. Diagnose traffic drops by separating impressions, positions, CTR, indexation and conversions; stable impressions with lower clicks can have multiple causes. AI referral attribution varies, so inspect actual source/medium, URL parameters and server logs rather than assuming a fixed referrer pattern.
 
 → `references/analytics-reporting.md`
 
@@ -362,7 +365,7 @@ Minimum stack: GSC, GA4, PageSpeed Insights, rank tracker. Traffic drop diagnost
 
 ## 11. Crawl & Indexation
 
-Crawl budget rarely matters under 500 pages. Key checks: `site:domain.com` discrepancy, GSC Coverage status pages, sitemap URL health, search/template URLs in sitemap (must be noindexed), soft 404s, canonical conflicts, broken internal links. `<priority>` and `<changefreq>` tags are ignored by Google/Bing — omit them.
+Crawl budget concerns depend on site scale, URL explosion and crawl behavior rather than a strict page-count cutoff. Key checks: GSC indexing data, sitemap URL health, utility/faceted URL behavior, soft 404s, canonical conflicts and broken internal links. `<priority>` and `<changefreq>` tags are ignored by Google/Bing — omit them.
 
 For canonical validation steps, GSC remediation tables, and "Google chose different canonical" fixes → read `references/procedures/11-crawl-indexation.md`.
 
@@ -372,7 +375,7 @@ Scripts: `sitemap_checker.py`, `canonical_checker.py`, `internal_links.py`, `bro
 
 ## 12. Local SEO
 
-Check GBP claimed + complete. NAP consistency character-for-character. Review profile (≥4.3 stars, ≥50 reviews). LocalBusiness schema with geo coordinates. Location page quality gates: 30+ pages need local content; 50+ pages = hard stop (March 2024 Core Update target). Never recommend fake reviews.
+For genuinely local businesses, check GBP accuracy, NAP consistency, reviews and appropriate LocalBusiness data. Do not use fixed review-count/rating/page-count thresholds as ranking gates. Never recommend fake reviews.
 
 Script: `local_signals_checker.py` → `references/local-seo.md`
 
@@ -380,7 +383,7 @@ Script: `local_signals_checker.py` → `references/local-seo.md`
 
 ## 13. Image SEO
 
-Alt text (10–125 chars), WebP format, file sizes (thumbnails <50KB, content <100KB, heroes <200KB), `srcset` + `sizes`, never lazy-load LCP image, `fetchpriority="high"` on LCP, `width`/`height` on all `<img>`.
+Use contextual alt text for meaningful images and `alt=""` for decorative images. Optimize actual delivered bytes/dimensions; JPEG, PNG, WebP and AVIF are valid. `srcset`/`sizes`, dimensions and fetchpriority are implementation tools to assess against real layout/performance, not universal pass/fail requirements. Do not lazy-load a confirmed LCP image.
 
 Script: `image_checker.py` → `references/image-seo.md`
 
@@ -388,7 +391,7 @@ Script: `image_checker.py` → `references/image-seo.md`
 
 ## 14. International SEO & Hreflang
 
-ISO 639-1 codes (`en-GB` ✅, `en-uk` ❌). Self-reference required. Return tags required. `x-default` required. Chinese needs script qualifier (`zh-Hans`/`zh-Hant`). Japanese = `ja` (not `jp`). Canonical alignment — hreflang only on canonical URLs.
+Use valid hreflang language/region codes and reciprocal annotations for alternate versions. `x-default` is recommended when a fallback page is useful, not universally required. Script qualifiers such as `zh-Hans`/`zh-Hant` are optional when needed for disambiguation. Keep hreflang aligned with intended canonicals.
 
 Script: `hreflang_checker.py` → `references/international-seo.md`
 
@@ -396,7 +399,7 @@ Script: `hreflang_checker.py` → `references/international-seo.md`
 
 ## 15. Programmatic SEO
 
-Quality gates: >100 pages = warning; >500 pages OR <30% unique content = hard stop; <40% differentiation = thin content risk. Publish in batches of 50–100. Never approve city pages where only the city name changes.
+Scale, word count and measured uniqueness percentages are diagnostics, not automatic violations. Flag programmatic pages only when evidence shows duplicate intent, doorway/scaled-abuse patterns, poor indexation, cannibalization, or low user value.
 
 Script: `programmatic_seo_auditor.py` → `references/programmatic-seo.md`
 
@@ -465,7 +468,7 @@ With a shell, first run `python scripts/report_lint.py report.md --summary summa
 - **GPTBot *is* training-only** — blocking it does **not** affect ChatGPT Search citation. `OAI-SearchBot` governs that; `ChatGPT-User` handles live fetches. Blocking one has no effect on the others.
 - **Google Search ignores llms.txt** — confirmed June 2026. Implement as non-Google AI hygiene only.
 - **AI Mode is a distinct citation engine** — only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs). Optimize separately.
-- **Content recency boosts AI citations** — content under 3 months old receives ~3x citation rate (SE Ranking, 2026).
+- **Content recency can matter for time-sensitive queries** — third-party studies report correlations, but do not apply a fixed freshness multiplier or update evergreen pages just to change dates.
 - **Back-button hijacking** — Google spam policy. Sites manipulating browser back-button behavior risk manual action.
 - **FAQ rich results retired** — Google retired FAQ rich results for ALL sites on May 7, 2026. Keep existing FAQPage as AI/entity signal; do not recommend for Google rich results. Use QAPage for genuine Q&A.
 - **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, VehicleListing, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo. Note: Dataset is NOT discontinued (Dataset Search still consumes it). Practice Problem is not removable either — its markup is `@type: Quiz`, which remains a valid schema.org type; treat it as rich-results-removed, not retired.
