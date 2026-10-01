@@ -23,7 +23,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from url_safety import is_crawlable_href
+from url_safety import get_validated, is_crawlable_href, normalize_url
 
 try:
     import requests
@@ -39,6 +39,16 @@ except ImportError:
 
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; UltimateSEO-Canonical/1.8)"}
+
+def _safe_get(url: str, timeout: int = 12):
+    """Fetch one public URL with TLS verification and validated redirects."""
+    def one_hop(u):
+        return requests.get(
+            u, timeout=timeout, headers=HEADERS,
+            allow_redirects=False,
+        )
+    return get_validated(one_hop, url)
+
 
 
 def _normalize_url(url: str) -> str:
@@ -127,10 +137,12 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
     }
 
     try:
-        resp = requests.get(url, timeout=timeout, headers=HEADERS,
-                            allow_redirects=True, verify=False)
+        resp, safety_error = _safe_get(url, timeout=timeout)
     except requests.exceptions.RequestException as e:
         result["error"] = f"Failed to fetch page: {str(e)[:100]}"
+        return result
+    if resp is None:
+        result["error"] = safety_error or "URL safety check failed"
         return result
 
     if resp.status_code != 200:
@@ -180,7 +192,7 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
 
     if raw_canonical is None:
         result["issues"].append({
-            "severity": "high",
+            "severity": "warning",
             "finding": "No canonical URL in HTML or HTTP Link header.",
             "fix": "Add <link rel=\"canonical\" href=\"[absolute-self-url]\"> to <head> or send an equivalent Link rel=canonical header.",
         })
@@ -191,7 +203,7 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
         if not canon_parsed.scheme or not canon_parsed.netloc:
             absolute_canonical = urljoin(final_url, raw_canonical)
             result["issues"].append({
-                "severity": "high",
+                "severity": "info",
                 "finding": f"Canonical tag uses relative URL: {raw_canonical}",
                 "fix": f"Use absolute URL: {absolute_canonical}",
             })
@@ -201,7 +213,7 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
         # --- HTTPS check ---
         if canon_parsed.scheme == "http" and parsed.scheme == "https":
             result["issues"].append({
-                "severity": "high",
+                "severity": "warning",
                 "finding": f"Canonical uses HTTP ({raw_canonical}) but page is HTTPS.",
                 "fix": "Update canonical to use HTTPS.",
             })
@@ -213,7 +225,7 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
             page_domain = parsed.netloc
             canon_domain = canon_parsed.netloc
             result["issues"].append({
-                "severity": "high",
+                "severity": "warning",
                 "finding": f"www mismatch: page is on {page_domain} but canonical "
                            f"points to {canon_domain}. Google may choose a different "
                            f"canonical than intended.",
@@ -254,9 +266,9 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
                 result["issues"].append({
                     "severity": "warning",
                     "finding": "Page has noindex plus a canonical pointing to a "
-                               f"different URL ({raw_canonical}). Google may ignore both.",
-                    "fix": "Remove noindex if you want the canonical target indexed. "
-                           "Or remove the canonical if you want this page excluded entirely.",
+                               f"different URL ({raw_canonical}); review whether those signals express the intended outcome.",
+                    "fix": "If this URL should be excluded, keep noindex crawlable. If it is a duplicate "
+                           "whose signals should consolidate, prefer a clear canonical strategy rather than relying on noindex for consolidation.",
                 })
             else:
                 result["warnings"].append({
@@ -278,11 +290,15 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
 
         # --- Validate canonical target ---
         try:
-            target_resp = requests.head(
-                raw_canonical, timeout=timeout, headers=HEADERS,
-                allow_redirects=True, verify=False,
-            )
-            result["canonical_status"] = target_resp.status_code
+            target_resp, target_error = _safe_get(raw_canonical, timeout=timeout)
+            if target_resp is None:
+                result["warnings"].append({
+                    "type": "canonical_unreachable",
+                    "detail": target_error or f"Could not reach canonical URL: {raw_canonical}",
+                })
+                target_resp = None
+            if target_resp is not None:
+                result["canonical_status"] = target_resp.status_code
 
             if target_resp.status_code == 404:
                 result["issues"].append({
@@ -298,49 +314,38 @@ def check_canonical(url: str, timeout: int = 12) -> dict:
                                f"{raw_canonical}",
                     "fix": "Canonical must point to a URL that returns 200.",
                 })
-            elif target_resp.history:
+            elif _normalize_url(target_resp.url) != _normalize_url(raw_canonical):
                 final_canonical = target_resp.url
                 result["issues"].append({
-                    "severity": "high",
-                    "finding": f"Canonical URL redirects: {raw_canonical} → "
-                               f"{final_canonical} ({len(target_resp.history)} hop(s)).",
-                    "fix": f"Update canonical to point to the final destination: "
-                           f"{final_canonical}",
+                    "severity": "warning",
+                    "finding": f"Canonical URL redirects: {raw_canonical} → {final_canonical}.",
+                    "fix": f"Prefer the final destination directly in the canonical: {final_canonical}.",
                 })
 
             if (
-                not is_self
+                target_resp is not None
+                and not is_self
                 and target_resp.status_code == 200
                 and "text/html" in target_resp.headers.get("content-type", "")
             ):
-                try:
-                    target_get = requests.get(
-                        raw_canonical, timeout=timeout, headers=HEADERS,
-                        allow_redirects=True, verify=False,
-                    )
-                    target_data = _extract_canonical_data(
-                        target_get.text, target_get.url, dict(target_get.headers),
-                    )
-                    if target_data["canonical_tags"]:
-                        target_canon = target_data["canonical_tags"][0]
-                        target_canon_parsed = urlparse(target_canon)
-                        if not target_canon_parsed.scheme:
-                            target_canon = urljoin(target_get.url, target_canon)
-                        result["canonical_target_canonical"] = target_canon
+                target_data = _extract_canonical_data(
+                    target_resp.text, target_resp.url, dict(target_resp.headers),
+                )
+                if target_data["canonical_tags"]:
+                    target_canon = target_data["canonical_tags"][0]
+                    target_canon_parsed = urlparse(target_canon)
+                    if not target_canon_parsed.scheme:
+                        target_canon = urljoin(target_resp.url, target_canon)
+                    result["canonical_target_canonical"] = target_canon
 
-                        if not _urls_equivalent(target_canon, raw_canonical):
-                            result["issues"].append({
-                                "severity": "critical",
-                                "finding": f"Canonical chain: this page's canonical "
-                                           f"({raw_canonical}) has its own canonical "
-                                           f"pointing elsewhere ({target_canon}). Google "
-                                           f"will likely override your canonical choice.",
-                                "fix": f"Ensure the canonical target ({raw_canonical}) "
-                                       f"has a self-referencing canonical, or update "
-                                       f"this page's canonical to {target_canon}.",
-                            })
-                except requests.exceptions.RequestException:
-                    pass
+                    if not _urls_equivalent(target_canon, target_resp.url):
+                        result["issues"].append({
+                            "severity": "warning",
+                            "finding": f"Canonical chain: target {target_resp.url} declares "
+                                       f"another canonical ({target_canon}).",
+                            "fix": "Review the intended primary URL and point canonical hints "
+                                   "directly to it where practical.",
+                        })
 
         except requests.exceptions.RequestException:
             result["warnings"].append({
@@ -402,8 +407,9 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
         visited.add(page_url)
 
         try:
-            resp = requests.get(page_url, timeout=timeout, headers=HEADERS,
-                                allow_redirects=True, verify=False)
+            resp, safety_error = _safe_get(page_url, timeout=timeout)
+            if resp is None:
+                continue
             if resp.status_code != 200 or "text/html" not in resp.headers.get("content-type", ""):
                 continue
         except requests.exceptions.RequestException:
@@ -431,11 +437,22 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
             canonical_map.setdefault(_normalize_url(canon), []).append(final_url)
 
             if page_info["canonical_count"] > 1:
-                page_info["issues"].append({
-                    "severity": "critical",
-                    "finding": f"Multiple canonical tags on {final_url}",
-                    "fix": "Keep only one canonical tag per page.",
-                })
+                targets = {
+                    _normalize_url(urljoin(final_url, x))
+                    for x in data["canonical_tags"] if x
+                }
+                if len(targets) > 1:
+                    page_info["issues"].append({
+                        "severity": "critical",
+                        "finding": f"Conflicting canonical targets on {final_url}",
+                        "fix": "Keep one intended canonical target; conflicting canonical hints may be ignored.",
+                    })
+                else:
+                    page_info["issues"].append({
+                        "severity": "info",
+                        "finding": f"Duplicate identical canonical tags on {final_url}",
+                        "fix": "Optional cleanup: remove redundant duplicate tags. They do not conflict.",
+                    })
 
             if not _urls_equivalent(canon, final_url):
                 page_info["issues"].append({
@@ -446,9 +463,9 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
 
             if "noindex" in data["meta_robots"] and not _urls_equivalent(canon, final_url):
                 page_info["issues"].append({
-                    "severity": "critical",
+                    "severity": "warning",
                     "finding": f"noindex + non-self canonical on {final_url}",
-                    "fix": "Remove noindex or remove the cross-page canonical.",
+                    "fix": "Review intent: use crawlable noindex for exclusion, or canonicalization for duplicate consolidation. Do not treat the combination as an automatic failure.",
                 })
 
             page_has_www = urlparse(final_url).netloc.startswith("www.")
@@ -468,9 +485,9 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
                 })
         else:
             page_info["issues"].append({
-                "severity": "high",
+                "severity": "warning",
                 "finding": f"Missing canonical tag on {final_url}",
-                "fix": "Add self-referencing canonical.",
+                "fix": "Consider a self-referencing canonical for Shopify hygiene, especially when URL variants exist; canonical is a hint, not a mandatory ranking tag.",
             })
 
         page_results.append(page_info)
@@ -495,7 +512,7 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
             non_self = [p for p in pages if not _urls_equivalent(p, canon_url)]
             if non_self:
                 result["cross_page_issues"].append({
-                    "severity": "warning",
+                    "severity": "info",
                     "finding": f"{len(pages)} pages point canonical to {canon_url}: "
                                + ", ".join(pages[:5]),
                     "fix": "Verify these are true duplicates. If not, each page should "
@@ -529,7 +546,11 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
     # Aggregate issues
     total_issues = sum(len(p["issues"]) for p in page_results)
     missing_canonical = sum(1 for p in page_results if not p["canonical"])
-    multi_canonical = sum(1 for p in page_results if p["canonical_count"] > 1)
+    multi_canonical = sum(
+        1 for p in page_results
+        if any(i.get("severity") == "critical" and "Conflicting canonical targets" in i.get("finding", "")
+               for i in p["issues"])
+    )
     noindex_conflict = sum(
         1 for p in page_results
         if "noindex" in p["meta_robots"] and p["canonical"]
@@ -576,11 +597,11 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
         )
     if multi_canonical:
         result["issues"].append(
-            f"🔴 {multi_canonical} page(s) have multiple canonical tags"
+            f"🔴 {multi_canonical} page(s) have conflicting canonical targets"
         )
     if noindex_conflict:
         result["issues"].append(
-            f"🔴 {noindex_conflict} page(s) have noindex + non-self canonical conflict"
+            f"⚠️ {noindex_conflict} page(s) combine noindex + non-self canonical; review intent"
         )
     if www_mismatch:
         result["issues"].append(
@@ -589,12 +610,9 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
 
     if alternate_pages:
         alt_pct = len(alternate_pages) / max(1, len(page_results)) * 100
-        severity = "🔴" if alt_pct > 50 or len(alternate_pages) > 15 else "⚠️"
         result["issues"].append(
-            f"{severity} {len(alternate_pages)} page(s) ({alt_pct:.0f}%) are "
-            f"alternate pages (canonical points to a different URL). "
-            f"GSC reports these as 'Alternate page with proper canonical tag' — "
-            f"they won't be indexed."
+            f"ℹ️ {len(alternate_pages)} page(s) ({alt_pct:.0f}%) use non-self canonicals. "
+            f"This may be intentional for duplicates/variants; review only unexpected patterns."
         )
         targets = set(p["canonical"] for p in alternate_pages)
         if len(targets) <= 3:
@@ -625,11 +643,12 @@ def crawl_canonicals(start_url: str, max_depth: int = 2, max_pages: int = 30,
 
     # Score
     score = 100
-    score -= missing_canonical * 15
+    score -= missing_canonical * 5
     score -= multi_canonical * 20
-    score -= noindex_conflict * 25
-    score -= www_mismatch * 15
-    score -= len(result["cross_page_issues"]) * 10
+    score -= noindex_conflict * 5
+    score -= www_mismatch * 10
+    score -= sum(10 for i in result["cross_page_issues"]
+                 if i.get("severity") in ("critical", "high", "warning"))
     result["score"] = max(0, min(100, score))
 
     return result
