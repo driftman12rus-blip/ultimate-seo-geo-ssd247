@@ -261,7 +261,7 @@ GEO = getting content cited by AI engines: Google AI Overviews, AI Mode, ChatGPT
 | # | Question | If No → Fix |
 |---|---|---|
 | 1 | AI search crawlers (OAI-SearchBot, Claude-SearchBot, PerplexityBot) allowed in robots.txt? | Remove **only** Disallow rules (or `*` blocks) that block those AI crawlers — scoped rule in `references/procedures/03-geo-ai-search.md` |
-| 2 | Page answers target query in first 60 words? | Move answer to opening paragraph |
+| 2 | Is the primary answer/product fact easy to find? | Improve clarity if user testing or citation sampling shows it is buried; no fixed word cutoff |
 | 3 | Content in raw HTML (not JS-only)? | Implement SSR |
 | 4 | Named author with credentials + publication date? | Add author bio + date |
 | 5 | Brand mentioned on YouTube or Reddit? | Start presence on missing platform |
@@ -468,7 +468,7 @@ With a shell, first run `python scripts/report_lint.py report.md --summary summa
 - **GPTBot *is* training-only** — blocking it does **not** affect ChatGPT Search citation. `OAI-SearchBot` governs that; `ChatGPT-User` handles live fetches. Blocking one has no effect on the others.
 - **Google Search ignores llms.txt** — confirmed June 2026. Implement as non-Google AI hygiene only.
 - **AI Mode is a distinct citation engine** — only 13.7% URL overlap with AI Overviews (Ahrefs, 540K query pairs). Optimize separately.
-- **Content recency boosts AI citations** — content under 3 months old receives ~3x citation rate (SE Ranking, 2026).
+- **Content recency can matter for time-sensitive queries** — third-party studies report correlations, but do not apply a fixed freshness multiplier or update evergreen pages just to change dates.
 - **Back-button hijacking** — Google spam policy. Sites manipulating browser back-button behavior risk manual action.
 - **FAQ rich results retired** — Google retired FAQ rich results for ALL sites on May 7, 2026. Keep existing FAQPage as AI/entity signal; do not recommend for Google rich results. Use QAPage for genuine Q&A.
 - **Retired schema (safe to remove):** SpecialAnnouncement, ClaimReview, VehicleListing, EstimatedSalary, LearningVideo, EnergyConsumptionDetails, CourseInfo. Note: Dataset is NOT discontinued (Dataset Search still consumes it). Practice Problem is not removable either — its markup is `@type: Quiz`, which remains a valid schema.org type; treat it as rich-results-removed, not retired.
