@@ -228,13 +228,13 @@ Wikipedia and Wikidata entities are among the highest-signal sources for AI cita
 
 ### AI Crawler Management
 
-**AI crawlers do NOT execute JavaScript** — content that requires JS to render is invisible to AI crawlers.
+**Do not assume JavaScript support is identical across AI crawlers.** Verify the target crawler/engine. Initial HTML is the most portable delivery, while Google Search can render JavaScript.
 
 | Crawler | Owner | Role | Recommendation |
 |---|---|---|---|
-| OAI-SearchBot | OpenAI | Search index (ChatGPT search) | **Always allow**. Blocking it removes the site from ChatGPT search results |
-| Claude-SearchBot | Anthropic | Search index (Claude search) | **Always allow**. Blocking it reduces visibility in Claude's search results |
-| PerplexityBot | Perplexity | Search index (Perplexity) | **Always allow**. Essential for Perplexity citations |
+| OAI-SearchBot | OpenAI | Automatic crawler for ChatGPT Search | Allow on pages you want discoverable/summarized in ChatGPT Search; blocking opts those pages out of normal Search crawling, though navigational links may still surface |
+| Claude-SearchBot | Anthropic | Search crawler | Allow when Claude search visibility is a stated goal; verify current Anthropic documentation before changing production robots.txt |
+| PerplexityBot | Perplexity | Search crawler | Allow when Perplexity visibility is a stated goal; verify current Perplexity crawler documentation before changing production robots.txt |
 | meta-webindexer | Meta | Search index (Meta AI search) | Allow |
 | DuckAssistBot | DuckDuckGo | Search: real-time fetch for AI-assisted answers, not used for training | Allow. Blocking it does not affect organic DuckDuckGo rankings |
 | Amzn-SearchBot | Amazon | Search in Amazon products, not used for training | Allow |
@@ -355,11 +355,9 @@ Some datasets associate multi-modal pages with higher AI citation/selection rate
 ## Platform-Specific Optimization
 
 ### Google AI Overviews
-- Ranking in top-10 is still a prerequisite (92% of citations from top-10 historically; now 38%)
-- Passage-level optimization matters more than page-level
-- Question-based H2/H3 headings closely match AI Overview triggers
-- First 30% of content provides 44.2% of citations — front-load your answers
-- Semantic completeness (r=0.89): self-contained sections score 4.2× more citations
+- Organic ranking and relevance remain important inputs, but no fixed top-10 prerequisite should be assumed.
+- Clear, self-contained sections can be tested for better extraction/citation; no passage-length or heading-format rule is documented as mandatory.
+- Third-party studies about citation position and semantic completeness are research context only, not expected uplift for SSD247.
 - **Top Stories carousel inside AI Overviews** (live July 17, 2026, US mobile) surfaces the searcher's preferred sources on developing-news queries — see § Preferred Sources below
 
 ### Preferred Sources — the one reader-controlled lever inside AI answers
@@ -408,34 +406,26 @@ safe mid-article.
 and reports host-level eligibility. Reported at Info severity — its absence is a missed opportunity,
 never a defect.
 
-### Google AI Mode (launched May 2025, powered by custom Gemini 2.5)
-- **Distinct citation engine** from AI Overviews — only 13.7% URL overlap (Ahrefs, 540K query pairs). Optimize separately.
-- 1B+ monthly users (I/O 2026). Powered by a custom version of Gemini 2.5.
-- Conversational, multi-turn — requires comprehensive depth
-- "Deep Search" runs 100+ sub-searches for complex queries
-- No organic blue links — AI citation is the only visibility
-- Content **recency** is a strong citation lever (~3x for content under 3 months, SE Ranking)
-- Optimize for multi-step, research-style queries
-- Images and video inputs supported (multi-modal input)
+### Google AI Mode
+- Treat it as a distinct search experience and measure actual cited/source URLs rather than assuming the same source set as AI Overviews.
+- Conversational and multi-step queries may reward comprehensive, well-structured facts, but no fixed depth or freshness multiplier is guaranteed.
+- Images/video may participate in the experience; add them for user value, not to satisfy a GEO quota.
 
 ### ChatGPT Search
-- Citations heavily favor Wikipedia (47.9%), Reddit (11.3%), and LinkedIn
-- No referral traffic header — cannot track via GA
-- Brand mentions and entity strength matter more than traditional SEO
-- Content freshness: update within 2 months for 28% more citations
-- 85% of retrieved pages are NEVER cited — quality threshold above retrieval
+- OAI-SearchBot access matters for normal automatic Search crawling; GPTBot is a separate training-control choice.
+- Source mixes vary by query and over time; do not build a channel strategy from one dataset's Wikipedia/Reddit percentages.
+- Referral attribution can vary; inspect actual GA4 source/medium, landing-page parameters and server logs rather than assuming all ChatGPT traffic is Direct.
+- Measure freshness, brand/entity clarity and citation rates with repeated prompt sampling instead of fixed uplift percentages.
 
 ### Perplexity
-- Content freshness is the #1 factor — newly published content indexed within hours-days
-- Sends trackable referral traffic (can monitor in GA)
-- Q&A format headings and definitive opening paragraphs
-- AI, science, marketing content gets 3× ranking multiplier
-- Uses RAG (Retrieval-Augmented Generation) — factual, well-structured content preferred
+- Verify crawler access and actual referral/citation behavior.
+- Freshness, Q&A structure and factual clarity can be tested, but there is no universal documented "#1 factor" or 3× niche multiplier.
+- Prefer accurate, well-structured facts and repeated measurement over formulaic page rewrites.
 
 ### Bing Copilot
-- Bing index authority (same as Bing SEO)
-- IndexNow support for faster indexing of new/updated content
-- Security headers and HTTPS required
+- Bing crawl/index health remains relevant.
+- IndexNow can help supported engines discover changed URLs faster, but it is not a Google ranking signal.
+- HTTPS is baseline site security; extra security headers are hardening, not a documented ranking requirement.
 
 ---
 
