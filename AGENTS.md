@@ -174,19 +174,19 @@ Do not state metrics unless the corresponding script ran:
 
 ### SEO Health Score Weights
 
-Category shares of the `generate_report.py` score when every check is measured (§ 2 lists the checks):
+Category shares of the SSD247 `generate_report.py` score when every weighted check is measured (§ 2 lists the checks). Security headers, social preview metadata, readability, entity/Wikipedia/Wikidata signals, and IndexNow remain visible diagnostics but carry zero score weight:
 
 | Category | Weight |
 |---|---|
-| Technical SEO | 32% |
-| Content quality / E-E-A-T | 18% |
-| On-page SEO | 11% |
-| Link authority | 11% |
-| Core Web Vitals | 10% |
-| AI search readiness (GEO) | 10% |
-| Schema / structured data | 4% |
-| Images | 2% |
-| Local SEO | 2% |
+| Technical SEO | 31% |
+| Content quality / E-E-A-T | 14% |
+| On-page SEO | 10% |
+| Link authority | 14% |
+| Core Web Vitals | 12% |
+| AI search readiness (GEO) | 8% |
+| Schema / structured data | 5% |
+| Images | 3% |
+| Local SEO | 3% |
 
 ### Finding Format
 
