@@ -64,26 +64,26 @@ def analyze_html(html: str, page_url: str) -> dict:
     elif tl < 30:
         issues.append(
             {
-                "severity": "warning",
-                "finding": f"Title short ({tl} chars); may under-explain the page in SERPs.",
-                "fix": "Expand toward ~30–60 chars with primary keyword + brand.",
+                "severity": "info",
+                "finding": f"Title is relatively short ({tl} chars); review whether it clearly identifies the page.",
+                "fix": "Improve only if the title is unclear or omits important identifying terms; Google has no fixed title character limit.",
             }
         )
     elif tl > 60:
         issues.append(
             {
-                "severity": "warning",
-                "finding": f"Title long ({tl} chars); may truncate in Google.",
-                "fix": "Tighten to ~60 chars; keep primary keyword in the first 50.",
+                "severity": "info",
+                "finding": f"Title is relatively long ({tl} chars); Google may display a shortened title link depending on device/query.",
+                "fix": "Shorten only if clarity improves; do not treat a character count as a ranking requirement.",
             }
         )
 
     if not meta_desc.strip():
         issues.append(
             {
-                "severity": "high",
-                "finding": "Missing meta description (and no og:description).",
-                "fix": "Add a unique meta description ~150–160 chars with benefit-led copy.",
+                "severity": "info",
+                "finding": "No meta description found (and no og:description fallback).",
+                "fix": "Consider a concise page-specific meta description for snippet quality. It is not a ranking requirement and Google may generate snippets from page content.",
             }
         )
     elif ml < 120:
@@ -91,26 +91,26 @@ def analyze_html(html: str, page_url: str) -> dict:
             {
                 "severity": "info",
                 "finding": f"Meta description short ({ml} chars).",
-                "fix": "Aim ~150–160 chars for fuller SERP snippet control.",
+                "fix": "Review for clarity only; Google has no fixed meta-description length limit.",
             }
         )
     elif ml > 160:
         issues.append(
             {
-                "severity": "warning",
-                "finding": f"Meta description long ({ml} chars); may truncate.",
-                "fix": "Trim to ~155–160 chars; front-load the value prop.",
+                "severity": "info",
+                "finding": f"Meta description is relatively long ({ml} chars); displayed snippets may be shortened.",
+                "fix": "Trim only if the important message is buried; Google truncates snippets as needed and has no fixed length limit.",
             }
         )
 
     if h1_count == 0:
-        issues.append({"severity": "high", "finding": "No H1 on page.", "fix": "Add one H1 matching main intent."})
+        issues.append({"severity": "warning", "finding": "No H1 detected.", "fix": "Add a clear primary page heading if the template lacks one; this is mainly a clarity/accessibility issue, not a fixed Google ranking requirement."})
     elif h1_count > 1:
         issues.append(
             {
-                "severity": "warning",
-                "finding": f"Multiple H1s ({h1_count}).",
-                "fix": "Use one H1; demote others to H2 unless template requires exception.",
+                "severity": "info",
+                "finding": f"Multiple H1s detected ({h1_count}); Google does not require exactly one.",
+                "fix": "Change only if the visual/semantic hierarchy is confusing for users or accessibility; multiple H1 elements alone are not an SEO defect.",
             }
         )
 
