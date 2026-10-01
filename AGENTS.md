@@ -298,8 +298,7 @@ procedure with script names: `references/procedures/04-technical-seo.md`.
 Google Search or AI Overviews. `GPTBot` blocks OpenAI *training* only — ChatGPT Search citations use
 `ChatGPT-User`.
 
-**Key rule**: serve canonical, meta robots, structured data, title, meta description and hreflang in
-the **initial server-rendered HTML**, never JS-only.
+**Reliability preference**: serve critical SEO elements in initial HTML where practical, especially fast-changing commerce facts. Google can render JavaScript, so JS-only is not automatically a defect; verify rendered output and target-crawler behavior.
 
 ## 5. Schema / Structured Data
 
@@ -324,7 +323,7 @@ Script: `validate_schema.py`
 
 ## 6. Content Quality & E-E-A-T
 
-E-E-A-T is universal for all competitive queries (December 2025). AI content acceptable if genuine E-E-A-T; penalized without unique value. Google AI Mode (180+ countries) delivers zero blue links — AI citation is the only visibility.
+E-E-A-T is a useful quality framework, not a standalone Google ranking factor. Evaluate helpfulness, accuracy, experience/expertise and trust in context, with stricter scrutiny for YMYL. Do not invent penalties or universal query rules.
 
 **Functional page exemption:** Sign up, sign in, log in, register, create account, forgot/reset password, membership enroll, checkout, cart, account dashboard, profile settings — these are task-completion UI pages. Do NOT flag them as thin content. Do NOT recommend adding more copy. Applicable checks: title accuracy, meta description, form labels, trust signals, schema.
 
@@ -340,9 +339,9 @@ Scripts: `article_seo.py`, `readability.py`, `duplicate_content.py`
 
 **Keywords (§ 7):** Classify by intent (Informational/Commercial/Transactional). Identify funnel gaps (TOFU/MOFU/BOFU). Opportunity Score: `(Volume × Intent Value) / Difficulty`. → `references/keyword-strategy.md`
 
-**Topic Clusters (§ 7b):** Pillar page (3,000–5,000 words) links to all cluster posts. Cluster posts (1,500–2,500 words) link back. Enforce bidirectional linking. No two posts targeting the same primary keyword.
+**Topic Clusters (§ 7b):** Organize related pages when it helps users and internal discovery. Do not enforce fixed pillar/cluster word counts or mandatory bidirectional-link quotas; resolve actual intent overlap/cannibalization with evidence.
 
-**AEO / Featured Snippets (§ 7c):** Answer in 40–60 words after question-format H2/H3. Lists: 5–9 items. Tables: ≤4 columns. Lead with direct answer. → `references/schema-types.md` for Speakable/SearchAction.
+**AEO / Featured Snippets (§ 7c):** Give concise direct answers and use lists/tables when they fit the query. Do not require fixed answer lengths, item counts, table widths or question-format headings.
 
 **Competitors (§ 8):** Identify 3–5 competitors. Assess across: content depth, missing clusters, schema, AI citations, E-E-A-T, AI crawler config, llms.txt. Run `robots_checker.py` and `llms_txt_checker.py` on competitors (label "External Observation Only").
 
@@ -350,7 +349,7 @@ Scripts: `article_seo.py`, `readability.py`, `duplicate_content.py`
 
 ## 9. Link Building & Internal Linking
 
-Internal linking first — highest leverage, zero cost. Orphan pages = zero allowed. Anchor text: 40–50% branded, 5–10% exact match (>20% = over-optimization). Link density: 3–5 per 1,000 words. Never recommend paid link schemes.
+Use internal links where they help discovery, hierarchy and users. Investigate important orphan pages, but do not enforce fixed anchor-text percentages or links-per-1,000-words quotas. Never recommend paid link schemes.
 
 Scripts: `internal_links.py`, `broken_links.py`, `link_profile.py` → `references/link-building.md`
 
@@ -366,7 +365,7 @@ Minimum stack: GSC, GA4, PageSpeed Insights, rank tracker. Traffic drop diagnost
 
 ## 11. Crawl & Indexation
 
-Crawl budget rarely matters under 500 pages. Key checks: `site:domain.com` discrepancy, GSC Coverage status pages, sitemap URL health, search/template URLs in sitemap (must be noindexed), soft 404s, canonical conflicts, broken internal links. `<priority>` and `<changefreq>` tags are ignored by Google/Bing — omit them.
+Crawl budget concerns depend on site scale, URL explosion and crawl behavior rather than a strict page-count cutoff. Key checks: GSC indexing data, sitemap URL health, utility/faceted URL behavior, soft 404s, canonical conflicts and broken internal links. `<priority>` and `<changefreq>` tags are ignored by Google/Bing — omit them.
 
 For canonical validation steps, GSC remediation tables, and "Google chose different canonical" fixes → read `references/procedures/11-crawl-indexation.md`.
 
@@ -376,7 +375,7 @@ Scripts: `sitemap_checker.py`, `canonical_checker.py`, `internal_links.py`, `bro
 
 ## 12. Local SEO
 
-Check GBP claimed + complete. NAP consistency character-for-character. Review profile (≥4.3 stars, ≥50 reviews). LocalBusiness schema with geo coordinates. Location page quality gates: 30+ pages need local content; 50+ pages = hard stop (March 2024 Core Update target). Never recommend fake reviews.
+For genuinely local businesses, check GBP accuracy, NAP consistency, reviews and appropriate LocalBusiness data. Do not use fixed review-count/rating/page-count thresholds as ranking gates. Never recommend fake reviews.
 
 Script: `local_signals_checker.py` → `references/local-seo.md`
 
@@ -392,7 +391,7 @@ Script: `image_checker.py` → `references/image-seo.md`
 
 ## 14. International SEO & Hreflang
 
-ISO 639-1 codes (`en-GB` ✅, `en-uk` ❌). Self-reference required. Return tags required. `x-default` required. Chinese needs script qualifier (`zh-Hans`/`zh-Hant`). Japanese = `ja` (not `jp`). Canonical alignment — hreflang only on canonical URLs.
+Use valid hreflang language/region codes and reciprocal annotations for alternate versions. `x-default` is recommended when a fallback page is useful, not universally required. Script qualifiers such as `zh-Hans`/`zh-Hant` are optional when needed for disambiguation. Keep hreflang aligned with intended canonicals.
 
 Script: `hreflang_checker.py` → `references/international-seo.md`
 
