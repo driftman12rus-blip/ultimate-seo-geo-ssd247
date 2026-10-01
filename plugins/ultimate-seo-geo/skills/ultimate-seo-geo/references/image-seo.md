@@ -26,7 +26,7 @@ Images are both a discoverability channel (Google Images, visual search) and a C
 | Check | Standard | Pass/Fail Signal |
 |---|---|---|
 | All `<img>` elements have alt attribute | Yes (even if `alt=""` for decorative) | Missing alt = ❌ |
-| Alt text is descriptive | 10–125 characters, natural language | "image", "photo", "pic" = ❌ |
+| Alt text is useful | Concise, contextual natural language for meaningful images | Generic/stuffed text is unhelpful; decorative images use empty alt |
 | Keyword used naturally if relevant | Once, naturally placed | Keyword stuffing alt = ❌ |
 | Decorative images use empty alt | `alt=""` (not removed entirely) | Absent alt on decorative = ⚠️ |
 
@@ -67,12 +67,14 @@ Is this a photo or complex image?
 
 ### File Size Thresholds
 
-| Image Type | Target | Warning | Hard Stop |
-|---|---|---|---|
-| Thumbnail / avatar | < 30KB | 50KB | 100KB |
-| Content / inline image | < 100KB | 150KB | 200KB |
-| Hero / banner image | < 200KB | 300KB | 400KB |
-| Full-width background | < 300KB | 500KB | 800KB |
+| Image Type | What to evaluate |
+|---|---|
+| Thumbnail / avatar | Actual transfer bytes vs rendered size/quality |
+| Content / inline image | Responsive delivery, dimensions and visual quality |
+| Hero / banner image | Measured LCP/network cost and rendered dimensions |
+| Full-width background | Actual transfer cost, device variants and caching |
+
+There are no universal SEO KB pass/fail thresholds. Use PageSpeed/DevTools evidence and optimize the actual delivered resource.
 
 **Tools to check**: Google PageSpeed Insights → "Serve images in next-gen formats"; Squoosh (squoosh.app) for manual optimization; Cloudinary/Imgix for automated CDN optimization.
 
@@ -95,7 +97,7 @@ Is this a photo or complex image?
 ```
 
 **Key rules:**
-- Always declare `width` and `height` attributes (prevents CLS — browser reserves space before image loads)
+- Reserve intrinsic/aspect-ratio space so images do not shift layout; HTML width/height attributes are one strong implementation
 - `sizes` attribute tells browser the rendered width at different viewport sizes
 - `srcset` provides multiple resolutions; browser picks the optimal one
 
@@ -126,7 +128,7 @@ Is this a photo or complex image?
 
 CLS (Cumulative Layout Shift) from images is one of the most common CWV failures. Root cause: browser doesn't know image dimensions until it loads, so content shifts when image appears.
 
-**Fix**: Always declare `width` and `height` on `<img>` elements.
+**Fix**: Reserve image aspect ratio/layout space using appropriate HTML/CSS. `width`/`height` attributes are a robust option but not the only valid implementation.
 
 ```html
 <!-- BAD: No dimensions → layout shift when image loads -->
@@ -156,10 +158,10 @@ Google Images is a meaningful traffic source for visual content categories (reci
 
 ## Image SEO for AI Citations
 
-Multi-modal content (text + images) is cited 156% more often than text-only content in AI search.
+Some GEO datasets associate multi-modal content with higher citation rates; treat the reported percentages as study-specific, not a requirement.
 
 **AI image optimization:**
-- Compress for speed (FCP < 0.4s correlates with 3× more AI citations)
+- Compress and size for users/Core Web Vitals; do not claim a fixed AI-citation multiplier from FCP
 - Add descriptive filenames + alt text (AI crawlers read alt text)
 - Include images that are genuinely illustrative (charts, diagrams, original photography outperform stock photos)
 - Video + images together is strongest signal (78% of cited sources combine multiple media types)
