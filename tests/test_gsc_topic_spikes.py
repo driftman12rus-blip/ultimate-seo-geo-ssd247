@@ -1,6 +1,6 @@
 """gsc_insights.py --topic-spikes: which topics jumped, and whether people or machines moved them.
 
-Rows are real Improvado queries from the v4.1 run (Aug 18-31 vs Sep 2-15 2026). On the full
+Rows are real queries from a B2B SaaS client audit (Aug 18-31 vs Sep 2-15 2026). On the full
 28,768 rows the analysis finds the ad-fraud topic (36 queries, 1,836 -> 1,052,907 impressions,
 1 click: machine-suspect) and a news topic the report never mentioned ('astra' / 'claude fable':
 105 queries, 0 -> 13,089 impressions, 268 clicks: real interest).
@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 import gsc_insights as gi  # noqa: E402
 
-FRAUD_POST = "https://improvado.io/blog/best-ad-fraud-detection-software"
-AD_FRAUD = "https://improvado.io/blog/ad-fraud"
-NEWS = "https://improvado.io/blog/claude-fable-5-1"
-BLOG = "https://improvado.io/blog/looker-studio"
+FRAUD_POST = "https://acme-analytics.example/blog/best-ad-fraud-detection-software"
+AD_FRAUD = "https://acme-analytics.example/blog/ad-fraud"
+NEWS = "https://acme-analytics.example/blog/claude-fable-5-1"
+BLOG = "https://acme-analytics.example/blog/looker-studio"
 
 
 def row(query, clicks, impressions, position, page=BLOG):
@@ -32,7 +32,7 @@ BEFORE = [
     row("ad fraud", 2, 7_158, 9.0, AD_FRAUD),
     row("click fraud detection", 0, 186, 12.0, AD_FRAUD),
     row("looker studio", 40, 30_000, 7.5),
-    row("improvado", 401, 772, 1.4),
+    row("acme", 401, 772, 1.4),
 ]
 AFTER = [
     row("ad fraud detection software", 0, 237_872, 2.1, FRAUD_POST),
@@ -50,7 +50,7 @@ AFTER = [
     row("claude fable 5.1 astra", 110, 5_200, 5.5, NEWS),
     row("astra fable benchmark", 68, 3_789, 7.0, NEWS),
     row("looker studio", 37, 38_056, 7.1),
-    row("improvado", 321, 800, 1.5),
+    row("acme", 321, 800, 1.5),
 ]
 
 
@@ -82,7 +82,7 @@ def test_steady_queries_are_not_topics():
 
 def test_real_interest_needs_clicks_at_the_human_floor():
     # 25 clicks on 42k impressions at position 9: up from 3, not impossible for people (P ~ 0.004),
-    # but below the 42 clicks the floor CTR expects. Unclear, not real interest (the Improvado
+    # but below the 42 clicks the floor CTR expects. Unclear, not real interest (the Acme
     # 'data / analytic' topic: 3 -> 11 clicks on 42k impressions).
     before = [row(f"data product analytics {i}", 1 if i < 3 else 0, 100, 9.0) for i in range(10)]
     after = [row(f"data product analytics {i}", 5 if i < 5 else 0, 4_200, 9.0) for i in range(10)]

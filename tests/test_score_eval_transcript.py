@@ -82,7 +82,7 @@ def test_excerpt_skips_the_required_sections():
 
 
 def test_a_summary_is_checked_when_given():
-    data = {"url": "https://psybear.co/", "timestamp": "2026-09-16T10:00:00",
+    data = {"url": "https://mushroom-guide.example/", "timestamp": "2026-09-16T10:00:00",
             "sections": {"security": {"score": 90}, "social": {"score": 40}, "sitemap": {"score": 100},
                          "readability": {"flesch_reading_ease": 45}, "content_quality": {"score": 55},
                          "schema_validation": {"score": 30}}}

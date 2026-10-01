@@ -1,6 +1,6 @@
 """link_opportunities.py: pages that name a target's topic but do not link to it.
 
-Calibrated on 40-page graphs of posthog.com, balloonbay.us,
+Calibrated on 40-page graphs of posthog.com, a local-services site,
 developers.cloudflare.com and smashingmagazine.com. First-draft false positives,
 each now a named test: the target listed as its own opportunity (a www copy in
 the graph), "Workers" matching "Workers AI" / "Workers KV", and page furniture
@@ -110,7 +110,7 @@ def test_header_and_footer_mentions_do_not_count():
 
 @pytest.mark.parametrize("furniture", [
     "<p>Docs / Workers / Pricing Last updated Jul 31, 2026 | Copy as Markdown | Edit</p>",         # cloudflare
-    "<p>Colors ⇄ Primary ⇄ Secondary pricing per piece ‹ 1 / 5 ›</p>",                           # balloonbay quote builder
+    "<p>Colors ⇄ Primary ⇄ Secondary pricing per piece ‹ 1 / 5 ›</p>",                           # a live site's quote builder
     "<p>Pricing <a href='/x'>x</a> Email Pricing For The Next Ones Of Our Team.</p>",             # smashing heading
     "<p>See pricing.</p>",                                                                        # too short to hold a link
     "<p><a href='/a'>a</a> <a href='/b'>b</a> <a href='/c'>c</a> pricing is listed for all of our plans today.</p>",

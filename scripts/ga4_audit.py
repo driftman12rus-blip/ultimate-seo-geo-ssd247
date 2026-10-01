@@ -5,7 +5,7 @@ Check a GA4 conversion event for contamination before anyone quotes it (Tier 2).
 A GA4 conversion series carries more than prospects: events fired on localhost
 and preview builds, bot bursts, one visitor firing the event again and again,
 and steps where a tag or form change moved the count while demand did not.
-On the Improvado v4.1 audit, 108 of July's form events came from one visitor
+On a client audit, 108 of July's form events came from one visitor
 and a step between August and September 2025 was never explained.
 
     python scripts/ga4_audit.py --property 123456789 --event generate_lead \\

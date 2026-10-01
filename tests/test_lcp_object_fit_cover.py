@@ -1,6 +1,6 @@
 """An object-fit: cover LCP image is not told to add srcset (1.21.3).
 
-balloonbay.us's hero is <img width=1920 height=696 class="hero__poster"> inside
+a live site's hero is <img width=1920 height=696 class="hero__poster"> inside
 an aria-hidden .hero__bg, styled `.hero__poster{position:absolute;inset:0;
 width:100%;height:100%;object-fit:cover}`. On a 375x812 phone its box is 375x946,
 so cover draws the 1920px file 2608px wide: it is already below display
@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 import image_checker  # noqa: E402
 
-SITE = "https://balloonbay.us/"
+SITE = "https://party-co.example/"
 NO_SRCSET = "First <img> has no srcset attribute."
 NOT_ASSESSED = "LCP image is object-fit: cover; srcset not assessed."
 
@@ -47,7 +47,7 @@ def _run(html):
     return data, {i["finding"]: i for i in data["issues"]}
 
 
-def test_balloonbay_hero_with_cover_css_has_no_srcset_finding():
+def test_live_hero_with_cover_css_has_no_srcset_finding():
     data, found = _run(_page(COVER_CSS))
     assert NO_SRCSET not in found
     note = found[NOT_ASSESSED]

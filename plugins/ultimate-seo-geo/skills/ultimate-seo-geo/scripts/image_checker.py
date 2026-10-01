@@ -84,7 +84,7 @@ def lcp_candidate(imgs: list):
 
     Small images (icons, logos) never are. A decorative image (alt="",
     aria-hidden, role=presentation) is skipped unless its declared size says
-    it is large: a hero poster is often alt="" (balloonbay.us's 1920x696
+    it is large: a hero poster is often alt="" (one live site's 1920x696
     hero is), and LCP is decided by rendered size, not by alt text.
     """
     for img in imgs:
@@ -233,7 +233,7 @@ def analyze_html(html: str, base_url: str) -> dict:
 
     # --- LCP image signals ---
     # The LCP candidate skips small and decorative images (lcp_candidate). On
-    # balloonbay.us the first <img> in the document is a 52px header logo with
+    # one live site the first <img> in the document is a 52px header logo with
     # alt="" aria-hidden="true"; the hero comes after it.
     lcp_issues = []
     lcp_srcset = None   # None: no LCP candidate
@@ -262,7 +262,7 @@ def analyze_html(html: str, base_url: str) -> dict:
                 "fix": "Add fetchpriority=\"high\" to the LCP/hero image to preload it sooner.",
             })
         # A cover-fitted image is scaled to fill its box. When the box is taller
-        # relative to its width than the image (balloonbay.us's hero: a 375x946
+        # relative to its width than the image (one live site's hero: a 375x946
         # box on a phone draws the 1920x696 file 2608px wide), smaller srcset
         # files would be blurry, so srcset is not assessed, and the report says so.
         cover = None if has_srcset else cover_fit(soup, first_img)

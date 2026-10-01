@@ -420,7 +420,7 @@ def accessible_name(a_tag) -> str:
     the visible text, then the alt of images and the <title> of SVGs inside the
     link, then the link's title attribute. A logo link (<a><img alt="Intuit"></a>)
     or a card link carrying aria-label is named; reading visible text only
-    reported both as "no anchor text" (balloonbay.us, 2026-09-29).
+    reported both as "no anchor text" (a live site, 2026-09-29).
     """
     label = _squash(a_tag.get("aria-label"))
     if label:

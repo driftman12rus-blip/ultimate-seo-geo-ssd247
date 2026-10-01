@@ -60,7 +60,7 @@ def test_the_subject_keeps_two_instances_apart_but_in_one_class():
     code_a, key_a = gr.finding_code("entity", {}, "Could not verify sameAs URL: https://yelp.com/biz/a")
     code_b, key_b = gr.finding_code("entity", {}, "Could not verify sameAs URL: https://yelp.com/biz/b")
     assert code_a == code_b and key_a != key_b
-    assert gr.finding_code("entity", {}, "No Wikipedia article found for 'Balloon Bay'.")[1].endswith("#balloon bay")
+    assert gr.finding_code("entity", {}, "No Wikipedia article found for 'Party Co'.")[1].endswith("#party co")
 
 
 def test_different_findings_from_one_check_get_different_codes():

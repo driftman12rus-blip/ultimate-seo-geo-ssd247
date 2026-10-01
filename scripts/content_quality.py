@@ -29,7 +29,7 @@ UNSUPPORTED_CLAIM_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Text that matches UNSUPPORTED_CLAIM_RE without being a claim. On balloonbay.us
+# Text that matches UNSUPPORTED_CLAIM_RE without being a claim. On one live site
 # (2026-09-29) all 15 hits were these: the phone number's last four digits,
 # review dates, "© 2026", "Last updated: ..." and "since 2019".
 PHONE_RE = re.compile(r"(?:\+?\d{1,3}[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}\b")

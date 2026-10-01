@@ -358,8 +358,8 @@ def test_every_quoted_price_must_be_official():
 # --- Segment prices, ratings, and a competitor whose name contains the brand -------------------
 
 EVENTS = {
-    "brand": "Balloon Bay",
-    "others": ["Bloom Balloon Bay Area"],
+    "brand": "Party Co",
+    "others": ["Bloom Party Co Bay Area"],
     "facts": [
         {"field": "price", "type": "money", "value": [200], "source": "https://events.example/pricing"},
         {"field": "price (corporate)", "type": "money", "value": [800], "context": ["corporate", "office party"],
@@ -375,7 +375,7 @@ def events_for(answer, prompt="balloon decor near me"):
 
 
 def test_the_private_price_quoted_for_corporate_is_wrong():
-    got, result = events_for("Balloon Bay's corporate packages start at $200.")
+    got, result = events_for("Party Co's corporate packages start at $200.")
     assert got["price (corporate)"] == (1, 1)
     assert got["price"] == (0, 0)  # the scoped fact owns the sentence
     issue = next(i for i in result["issues"] if i["code"] == "brand_fact.price-corporate")
@@ -383,14 +383,14 @@ def test_the_private_price_quoted_for_corporate_is_wrong():
 
 
 def test_a_corporate_prompt_scopes_an_answer_that_never_says_corporate():
-    got, _ = events_for("Balloon Bay pricing starts at $200.", prompt="corporate event balloon decor cost")
+    got, _ = events_for("Party Co pricing starts at $200.", prompt="corporate event balloon decor cost")
     assert got["price (corporate)"] == (1, 1) and got["price"] == (0, 0)
-    got, _ = events_for("Balloon Bay pricing starts at $800.", prompt="corporate event balloon decor cost")
+    got, _ = events_for("Party Co pricing starts at $800.", prompt="corporate event balloon decor cost")
     assert got["price (corporate)"] == (1, 0)
 
 
 def test_each_segment_price_is_right_in_its_own_sentence():
-    got, _ = events_for("Balloon Bay corporate packages start at $800. Balloon Bay birthday packages start at $200.")
+    got, _ = events_for("Party Co corporate packages start at $800. Party Co birthday packages start at $200.")
     assert got["price (corporate)"] == (1, 0) and got["price"] == (1, 0)
 
 
@@ -399,32 +399,32 @@ def test_a_sentence_naming_another_segment_is_not_taken_by_the_prompt():
     events = dict(EVENTS, facts=EVENTS["facts"] + [
         {"field": "price (birthday)", "type": "money", "value": [200], "context": ["birthday"]}])
     result = cs.check_brand_facts([{"engine": "chatgpt", "prompt": "corporate balloon decor", "run": "1",
-                                    "answer": "Balloon Bay birthday packages start at $200."}], events)
+                                    "answer": "Party Co birthday packages start at $200."}], events)
     got = {f["field"]: (f["stated_in"], f["wrong"]) for f in result["facts"]}
     assert got["price (corporate)"] == (0, 0) and got["price (birthday)"] == (1, 0)
 
 
 def test_a_competitors_rating_under_the_brands_name_is_wrong():
-    got, result = events_for("Balloon Bay has a 4.8-star rating from 106 Google reviews.")
+    got, result = events_for("Party Co has a 4.8-star rating from 106 Google reviews.")
     assert got["rating"] == (1, 1)
     rating = next(f for f in result["facts"] if f["field"] == "rating")
     assert rating["wrong_examples"][0]["stated"] == "4.8 (106 reviews)"
-    assert events_for("Balloon Bay is rated 5.0 on Google.")[0]["rating"] == (1, 0)
-    assert events_for("Balloon Bay holds 5 stars across 44 reviews.")[0]["rating"] == (1, 0)  # counts grow
+    assert events_for("Party Co is rated 5.0 on Google.")[0]["rating"] == (1, 0)
+    assert events_for("Party Co holds 5 stars across 44 reviews.")[0]["rating"] == (1, 0)  # counts grow
 
 
 def test_the_right_rating_with_another_businesss_review_count_is_wrong():
-    assert events_for("Balloon Bay has 5.0 stars from 106 reviews.")[0]["rating"] == (1, 1)
+    assert events_for("Party Co has 5.0 stars from 106 reviews.")[0]["rating"] == (1, 1)
 
 
 def test_five_star_service_is_not_a_rating():
-    assert events_for("Balloon Bay offers 5-star service for weddings.")[0]["rating"] == (0, 0)
+    assert events_for("Party Co offers 5-star service for weddings.")[0]["rating"] == (0, 0)
 
 
 def test_a_competitor_whose_name_contains_the_brand_is_not_the_brand():
-    got, result = events_for("Bloom Balloon Bay Area has a 4.8 rating from 106 reviews.")
+    got, result = events_for("Bloom Party Co Bay Area has a 4.8 rating from 106 reviews.")
     assert got["rating"] == (0, 0) and result["answers_naming_brand"] == 0
-    got, _ = events_for("Balloon Bay is not Bloom Balloon Bay Area, which has 4.8 stars.")
+    got, _ = events_for("Party Co is not Bloom Party Co Bay Area, which has 4.8 stars.")
     assert got["rating"] == (0, 0)
 
 

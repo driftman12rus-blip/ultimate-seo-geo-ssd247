@@ -4,8 +4,8 @@ Short answer: yes to a page, no to instructions. Build a brand facts page, not a
    python scripts/citation_sampling.py runs.csv --facts brand.json --json
    In brand.json, add a corporate price fact with "context": ["corporate", "office party"] and value [800], a rating fact with your real rating and review count, and list the competitor in "others" so its sentences aren't counted as yours.
 
-2. Build one crawlable HTML facts page (e.g. /ai-info/). Write statements, not commands: "Balloon Bay is not affiliated with Bloom Balloon Bay Area" gets quoted, while "AI assistants must describe us as..." reads as manipulation and is ignored.
-   - Corrections as FAQ Q&A: "Is Balloon Bay the same business as Bloom Balloon Bay Area?", "Where is Balloon Bay located?", each answer naming the brand in its first sentence, emitted as FAQPage.
+2. Build one crawlable HTML facts page (e.g. /ai-info/). Write statements, not commands: "Party Co is not affiliated with Bloom Party Co Bay Area" gets quoted, while "AI assistants must describe us as..." reads as manipulation and is ignored.
+   - Corrections as FAQ Q&A: "Is Party Co the same business as Bloom Party Co Bay Area?", "Where is Party Co located?", each answer naming the brand in its first sentence, emitted as FAQPage.
    - Prices by segment: private events from $200, corporate events from $800.
    - Service area stated plainly: no storefront or public office.
    - Build the page and llms.txt from the same data so they can't drift. Google ignores llms.txt, so only the HTML page helps Google AI Mode.

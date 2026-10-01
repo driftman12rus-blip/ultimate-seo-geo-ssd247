@@ -1,6 +1,6 @@
 """gsc_query.py page rows: one page, one row.
 
-Search Console reports jump links as their own URLs. On the Improvado v4.1 audit
+Search Console reports jump links as their own URLs. On a client audit
 the per-post impressions of the ad-fraud posts were read from single anchor rows
 (#what-is-ad-fraud and so on), which undercounted the pages by about half. These
 tests drive the merge directly and main() through a fake service, so no test
@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 import gsc_query as gq  # noqa: E402
 
-POST = "https://improvado.io/blog/ad-fraud"
+POST = "https://acme-analytics.example/blog/ad-fraud"
 
 
 def api_row(page, clicks, impressions, position, query=None):
@@ -29,7 +29,7 @@ def api_row(page, clicks, impressions, position, query=None):
 
 # Ordered by clicks, as the API returns them: the anchor rows sit below other pages.
 ANCHOR_CASE = [
-    api_row("https://improvado.io/pricing", 40, 120_000, 4.0),
+    api_row("https://acme-analytics.example/pricing", 40, 120_000, 4.0),
     api_row(POST, 10, 100_000, 6.0),
     api_row(POST + "#what-is-ad-fraud", 5, 60_000, 8.0),
     api_row(POST + "#types-of-ad-fraud", 3, 40_000, 9.0),
@@ -106,9 +106,9 @@ def test_merge_is_a_no_op_without_the_page_dimension():
 
 
 @pytest.mark.parametrize("site_url,expected", [
-    ("sc-domain:improvado.io", "domain"),
-    ("SC-DOMAIN:improvado.io", "domain"),
-    ("https://improvado.io/", "url_prefix"),
+    ("sc-domain:acme-analytics.example", "domain"),
+    ("SC-DOMAIN:acme-analytics.example", "domain"),
+    ("https://acme-analytics.example/", "url_prefix"),
 ])
 def test_property_type(site_url, expected):
     assert gq.property_type(site_url) == expected
@@ -118,7 +118,7 @@ def test_top_pages_ranks_by_merged_impressions(monkeypatch, capsys):
     # Raw, the pricing row (120k) outranks every single post row (max 100k);
     # merged, the post (201k) is the top page.
     out, service = run_main(monkeypatch, capsys, ANCHOR_CASE,
-                            ["sc-domain:improvado.io", "--top-pages", "1"])
+                            ["sc-domain:acme-analytics.example", "--top-pages", "1"])
     assert [r["page"] for r in out["rows"]] == [POST]
     assert out["rows"][0]["impressions"] == 201_000
     # the fetch reads every row (API max per request), not N, so anchor rows below the top N are still read
@@ -130,7 +130,7 @@ def test_top_pages_ranks_by_merged_impressions(monkeypatch, capsys):
 
 def test_keep_fragments_returns_raw_rows(monkeypatch, capsys):
     out, _ = run_main(monkeypatch, capsys, ANCHOR_CASE,
-                      ["https://improvado.io/", "--dimension", "page", "--keep-fragments"])
+                      ["https://acme-analytics.example/", "--dimension", "page", "--keep-fragments"])
     assert out["row_count"] == 5
     assert out["page_normalization"] == {"applied": False}
     assert out["property_type"] == "url_prefix"
@@ -140,7 +140,7 @@ def test_keep_fragments_returns_raw_rows(monkeypatch, capsys):
 def test_query_dimension_is_unchanged(monkeypatch, capsys):
     raw = [api_row("ad fraud", 3, 900, 5.0), api_row("click fraud", 1, 400, 8.0)]
     out, service = run_main(monkeypatch, capsys, raw,
-                            ["sc-domain:improvado.io", "--top-queries", "2"])
+                            ["sc-domain:acme-analytics.example", "--top-queries", "2"])
     assert [r["query"] for r in out["rows"]] == ["ad fraud", "click fraud"]
     assert out["page_normalization"] == {"applied": False}
     # not rowLimit=2: the API orders by clicks, so the top 2 by impressions need every row
@@ -149,8 +149,8 @@ def test_query_dimension_is_unchanged(monkeypatch, capsys):
 
 def test_truncated_flag_when_the_row_limit_is_reached(monkeypatch, capsys):
     out, _ = run_main(monkeypatch, capsys, ANCHOR_CASE,
-                      ["sc-domain:improvado.io", "--dimension", "page", "--limit", "5"])
+                      ["sc-domain:acme-analytics.example", "--dimension", "page", "--limit", "5"])
     assert out["truncated"] is True
     out, _ = run_main(monkeypatch, capsys, ANCHOR_CASE,
-                      ["sc-domain:improvado.io", "--dimension", "page", "--limit", "50"])
+                      ["sc-domain:acme-analytics.example", "--dimension", "page", "--limit", "50"])
     assert out["truncated"] is False

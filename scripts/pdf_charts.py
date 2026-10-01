@@ -7,7 +7,7 @@ import math
 from typing import Any
 
 
-# Tobto design-system tokens (tokens/colors.css). Hues at the -500 step carry fills
+# Report design-system tokens (tokens/colors.css). Hues at the -500 step carry fills
 # and strokes, matching references/report-template/report.css.
 COLORS = {
     "red": "#c2334f",         # red-500

@@ -1,6 +1,6 @@
 """ga4_audit.py: a GA4 conversion event checked for contamination before it is quoted.
 
-The replay fixture is generated in the shape Improvado published in its verification of
+The replay fixture is generated in the shape a client published in its verification of
 report v4.1: GA4 form events of 227/273/337 (Jun-Aug 2025) and 377/525/197 (Jun-Aug 2026),
 with 108 of July's from one visitor; a spam burst on 27 July 2026; developer submissions from
 localhost and pr-*.amplifyapp.com pages; an unexplained step between August and September
@@ -22,7 +22,7 @@ sys.path.insert(0, SCRIPTS)
 
 import ga4_audit as ga  # noqa: E402
 
-PROD = "improvado.io"
+PROD = "acme-analytics.example"
 
 
 def days(start, end):

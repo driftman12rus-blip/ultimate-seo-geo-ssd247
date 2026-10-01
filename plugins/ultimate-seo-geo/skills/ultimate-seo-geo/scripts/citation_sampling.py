@@ -30,8 +30,8 @@ the brand are read, and a value counts only when it closely follows its keyword
 do not name the brand, or with another listed brand between the brand and the
 keyword, is left out. What it cannot read, it does not judge: a fact the answer
 states through a pronoun ("It was founded in...") counts as not stated.
-A brand name inside a listed competitor's longer name ("Bloom Balloon Bay
-Area" for brand "Balloon Bay") is the competitor, not the brand.
+A brand name inside a listed competitor's longer name ("Bloom Party Co Bay
+Area" for brand "Party Co") is the competitor, not the brand.
 
 Segment-scoped facts: a fact with "context" terms (e.g. a corporate price with
 ["corporate", "office party"]) is judged only in sentences that use one of the
@@ -327,7 +327,7 @@ def _word(phrase: str) -> str:
 def _mentions(text: str, names: list, others=()) -> list:
     """Brand mentions in text, leaving out those inside a listed competitor's longer name.
 
-    "Bloom Balloon Bay Area" contains "Balloon Bay"; when it is listed in `others`,
+    "Bloom Party Co Bay Area" contains "Party Co"; when it is listed in `others`,
     that is the competitor, not the brand.
     """
     taken = [(m.start(), m.end()) for o in others for m in re.finditer(_word(o), text, re.I)]

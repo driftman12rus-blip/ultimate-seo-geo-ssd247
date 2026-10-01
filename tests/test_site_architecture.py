@@ -2,7 +2,7 @@
 
 Real-site lessons pinned here:
 
-  * lab.mykpono.com — a JavaScript homepage with no raw-HTML links is a
+  * a JavaScript-rendered site — a JavaScript homepage with no raw-HTML links is a
     "complete" crawl of one page; equity over it put the homepage at 100%.
     Equity now needs at least ten fetched pages covering most of the sitemap.
   * smashingmagazine.com — dated "what is X" blog posts are not evergreen URLs
@@ -177,7 +177,7 @@ def test_equity_gates(case):
 
 
 def test_js_homepage_one_page_complete_crawl_is_not_measured():
-    """lab.mykpono.com: 1 page fetched, 0 links, 23 sitemap URLs, crawl 'complete'."""
+    """A JavaScript-rendered site: 1 page fetched, 0 links, 23 sitemap URLs, crawl 'complete'."""
     g = _graph([_page(S + "/", [], depth=0)], [S + "/"] + [S + f"/p{i}" for i in range(23)])
     assert "only 1 page" in arch.equity_gate(g)
 

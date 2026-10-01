@@ -1,6 +1,6 @@
-Here is the full audit for psybear.co.
+Here is the full audit for mushroom-guide.example.
 
-# SEO Audit Report — psybear.co
+# SEO Audit Report — mushroom-guide.example
 Date: 2026-09-16 | Business Type: Publisher / Blog (YMYL health) | Audited Pages: 12 | Confidence: Medium
 
 ## SEO Health Score: 62/100

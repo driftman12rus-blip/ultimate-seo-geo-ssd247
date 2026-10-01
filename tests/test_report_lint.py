@@ -287,8 +287,8 @@ def test_duplicate_findings_across_severity_sections_warn(summary):
 
 
 def test_bold_labels_blank_lines_and_finding_subheadings():
-    """iteration-2 eval-1 (psybear.co) wrote findings like this and parsed as having none."""
-    text = """# SEO Audit Report — psybear.co
+    """iteration-2 eval-1 (mushroom-guide.example) wrote findings like this and parsed as having none."""
+    text = """# SEO Audit Report — mushroom-guide.example
 Date: 2026-03-30 | Audited Pages: 50 | Confidence: Medium
 
 ## 🟠 High Priority (fix this week)
@@ -318,7 +318,7 @@ Date: 2026-03-30 | Audited Pages: 50 | Confidence: Medium
 
 def test_a_fix_written_as_a_list_under_its_label():
     """iteration-2 eval-1: "**Fix:**" on its own line, then numbered steps, was reported as a missing Fix."""
-    text = """# SEO Audit Report — psybear.co
+    text = """# SEO Audit Report — mushroom-guide.example
 Date: 2026-03-30 | Audited Pages: 50 | Confidence: Medium
 
 ## 🟡 Medium Priority

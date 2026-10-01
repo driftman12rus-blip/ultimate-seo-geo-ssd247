@@ -239,7 +239,7 @@ def equity_gate(graph: dict) -> str | None:
 
     A crawl is "complete" when every linked page was fetched — which is
     trivially true for a JavaScript homepage with no links in raw HTML
-    (lab.mykpono.com: 1 page fetched, 23 in the sitemap, "complete"). Equity
+    (one live site: 1 page fetched, 23 in the sitemap, "complete"). Equity
     over that graph is the homepage at 100% and nonsense. So: the crawl must
     be complete, cover at least EQUITY_MIN_PAGES pages, and reach most of
     what the sitemap lists.

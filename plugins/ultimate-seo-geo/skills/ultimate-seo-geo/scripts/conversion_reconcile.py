@@ -6,7 +6,7 @@ GA4 counts form events; the CRM counts submissions and the people behind them.
 The two drift apart, and a raw series is usually contaminated: bot bursts,
 the team's own test submissions, developer and preview hosts, and one person
 submitting four times. A trend quoted from one ruler can point the other way
-from the other. On the Improvado v4.1 audit, GA4 organic demo requests fell
+from the other. On a client audit, GA4 organic demo requests fell
 44% while the number of distinct clean business people asking for a demo rose 7%.
 
     python scripts/conversion_reconcile.py --crm submissions.csv --production-host example.com --json
@@ -212,7 +212,7 @@ def burst_days(submissions: list, factor=BURST_FACTOR, minimum=BURST_MIN, traili
                tail=BURST_TAIL_FACTOR) -> dict:
     """{day: {"count", "baseline", "part"}} for days far above the trailing median of the days before them.
 
-    A burst decays over days (Improvado, July 2026: 627 submissions, then 140, 151, 126, 113 against a
+    A burst decays over days (a client, July 2026: 627 submissions, then 140, 151, 126, 113 against a
     50-90 baseline), so the days straight after a burst stay in it while they are at least `tail`
     times the burst's own baseline.
     """
