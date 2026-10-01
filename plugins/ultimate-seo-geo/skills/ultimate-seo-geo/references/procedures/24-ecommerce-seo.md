@@ -48,9 +48,9 @@ Within `offers`, check:
 | `priceValidUntil` | Recommended | Enables price drop appearance in search |
 | `seller` | Recommended | Organization or Person |
 
-#### Step 3: Check Required Schema Properties (2025+ Requirements)
+#### Step 3: Check Return and Shipping Structured Data
 
-**MerchantReturnPolicy** (required since March 2025 for merchant listing features):
+**MerchantReturnPolicy** — validate the implementation that is actually in use. Do not require the same store-wide policy to be repeated inside every Product object when it is already provided correctly at store/organization level or through the relevant commerce integration.
 
 | Property | Required | Notes |
 |----------|----------|-------|
@@ -60,7 +60,7 @@ Within `offers`, check:
 | `merchantReturnDays` | Conditional | Required if finite return window |
 | `returnMethod` | Recommended | `ReturnByMail`, `ReturnInStore`, etc. |
 
-**OfferShippingDetails** (required for shipping information in search):
+**OfferShippingDetails** — validate when product-level shipping markup is present or intentionally used. Do not create a generic defect solely because shipping details are not repeated on every Product object.
 
 | Property | Required | Notes |
 |----------|----------|-------|
@@ -102,22 +102,22 @@ Within `offers`, check:
 | Schema type | `CollectionPage` or `ItemList` | `Product` schema on category page |
 | Breadcrumbs | `BreadcrumbList` present with correct hierarchy | Missing or flat |
 | Faceted navigation | Filtered views canonicalized to primary category | Each filter combo = unique indexable URL |
-| Low-value filters | `noindex` on combinations with <2 products | All filter combos indexed |
+| Low-value filters | Treatment based on demand, duplication, crawl/index evidence and landing-page intent | Blanket threshold-based indexing rules |
 | Pagination | Pages accessible via links (crawl hints) | Orphaned paginated pages |
-| Category content | 200–300 word intro with buying guide content | No text content (thin at scale) |
+| Category content | Useful category-specific content where it adds value | Content added only to satisfy an arbitrary word count |
 
 **Faceted Navigation Rules:**
 - Primary category page = canonical for all filter variations
 - Allow crawling of high-value filter pages (popular brands, key attributes)
-- `noindex` filter combinations with <2 products
-- Never block faceted URLs in robots.txt — use noindex instead (preserves link equity)
+- Do not use a fixed product-count threshold to decide indexation.
+- `robots.txt`, `noindex`, canonicalization, or allowing indexation can each be appropriate depending on crawl demand, duplication, search intent, and landing-page strategy. Remember that a `noindex` directive must be crawlable to be seen.
 - `rel=next/prev` deprecated by Google but still useful as crawl hints for Bing and others
 
 #### Step 6: Product Page Optimization
 
 | Check | Requirement | Impact |
 |-------|-------------|--------|
-| Unique descriptions | ≥150 words of original content per product | Duplicate/thin content penalty if using manufacturer copy |
+| Product description | Useful, accurate content that distinguishes the product where needed; no fixed word minimum | Duplicate intent/content problems should be evidenced, not inferred from length alone |
 | Review markup | `AggregateRating` only with real customer reviews | Google policy violation if fake or imported reviews |
 | Price signals | `priceValidUntil` set, `hasMerchantReturnPolicy` linked | Enables price drop rich results |
 | Product category | `Product.category` present | Added to merchant listing docs July 7, 2026 — accepts **Text** *or* **CategoryCode**; align with the Google Merchant Center feed spec so feed and markup agree |
@@ -203,11 +203,11 @@ consistency defect, not two independent signals.
 
 | Issue | Impact | Fix |
 |-------|--------|-----|
-| Faceted navigation creating crawl bloat | Diluted crawl budget, duplicate content | Canonicalize to primary category; noindex filter combos with <2 products |
-| Manufacturer descriptions copied across products | Thin/duplicate content penalty | Write unique 150+ word descriptions per product |
+| Faceted navigation creating crawl bloat | Diluted crawl budget, duplicate content | Choose robots/noindex/canonical/indexable treatment per URL pattern using evidence; avoid blanket thresholds |
+| Manufacturer descriptions copied across products | Potential duplication when pages serve the same intent with little distinguishing value | Improve only where duplication, cannibalization, poor indexation, or weak usefulness is evidenced; no fixed word target |
 | Out-of-stock pages returning 404 | Lost link equity, poor UX | Keep page, show alternatives, use `Discontinued` availability |
-| Missing return/shipping schema | Lost merchant listing features | Add MerchantReturnPolicy + OfferShippingDetails |
-| Category pages with no text content | Thin content at scale | Add 200–300 word intro with category-specific buying guide content |
+| Return/shipping structured data defect | Merchant information may be inconsistent or ineligible | Fix only validated missing/invalid/inconsistent implementation; do not require redundant per-product repetition |
+| Category pages lacking useful context | May underserve search intent in some collections | Add helpful category content only where the query intent and page usefulness justify it; no fixed word target |
 | Product variants as separate URLs without ProductGroup | Cannibalization, diluted signals | Use ProductGroup schema + canonical to primary variant |
 | Review schema without real reviews | Google spam policy violation | Remove AggregateRating until genuine reviews collected |
 | Price not in schema or mismatched | Lost price display in search | Ensure schema price matches visible page price exactly |
