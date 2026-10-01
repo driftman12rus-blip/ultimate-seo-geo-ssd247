@@ -293,34 +293,34 @@ def build_environment_fixes(data: dict) -> list:
 
     if onpage_measured and not h1s:
         add(
-            "critical",
-            "Missing H1 on page",
-            "No primary content heading was detected, which weakens topical clarity.",
+            "warning",
+            "No H1 detected",
+            "A clear primary heading can improve page structure and accessibility; H1 count is not a fixed Google ranking rule.",
             _platform_hint(platform, "heading"),
         )
 
-    if onpage_measured and (not meta or len(meta) < 110 or len(meta) > 170):
+    if onpage_measured and not meta:
         add(
-            "warning",
-            "Meta description is missing or out of range",
-            "This can reduce SERP CTR and snippet quality.",
+            "info",
+            "No meta description found",
+            "A page-specific description can improve snippet messaging, but it is not a ranking requirement and Google may generate snippets from page content.",
             _platform_hint(platform, "metadata"),
         )
 
-    if onpage_measured and (not title or len(title) < 30 or len(title) > 65):
+    if onpage_measured and not title:
         add(
-            "warning",
-            "Title tag needs optimization",
-            "Title length/content is likely suboptimal for rankings and click-through.",
+            "critical",
+            "Missing title tag",
+            "The page lacks its primary document title.",
             _platform_hint(platform, "metadata"),
         )
 
     missing_headers = sec.get("headers_missing", {})
     if missing_headers:
         add(
-            "warning",  # HTTPS with headers missing is a middle tier; no HTTPS is the failing one
+            "info",
             f"{len(missing_headers)} security headers missing",
-            "Missing headers reduce trust and can expose the site to browser/security risks.",
+            "This is a security-hardening note, not a Google ranking factor. Missing headers can still matter for browser/security risk.",
             _platform_hint(platform, "headers"),
         )
 
@@ -521,9 +521,9 @@ def build_environment_fixes(data: dict) -> list:
     tw_missing = soc.get("twitter_missing", [])
     if og_missing or tw_missing:
         add(
-            "warning",
+            "info",
             "Social meta tags are incomplete",
-            "Missing OG/Twitter tags weakens social previews and share quality.",
+            "Missing OG/Twitter tags can weaken social previews, but this is not a Google ranking factor.",
             _platform_hint(platform, "metadata"),
         )
 
@@ -540,10 +540,10 @@ def build_environment_fixes(data: dict) -> list:
     if not rd.get("error") and (
             rd.get("flesch_reading_ease", 100) < 40 or rd.get("avg_sentence_length", 0) > 25):
         add(
-            "warning",
-            "Content readability is difficult",
-            "Long, complex text can reduce engagement and comprehension.",
-            "Rewrite key sections with shorter sentences (15-20 words), shorter paragraphs (2-4 sentences), and clearer subheadings.",
+            "info",
+            "Readability metric is relatively difficult",
+            "Flesch and sentence-length metrics are descriptive and can misread technical product content.",
+            "Review actual user comprehension before rewriting; do not target a fixed readability or sentence-length score.",
         )
 
     if not fixes:
@@ -829,6 +829,7 @@ def collect_data(
         ("hreflang", "hreflang_checker.py", [url]),
         ("duplicate_content", "duplicate_content.py", [url]),
         ("content_quality", "content_quality.py", [url]),
+        ("ecommerce_schema", "ecommerce_schema.py", [url]),
         ("sitemap", "sitemap_checker.py", sitemap_args),
         # Site structure (display-only, never in CHECK_WEIGHTS)
         ("page_types", "page_type_classifier.py", structure_args),
@@ -1330,7 +1331,7 @@ CHECK_GROUPS = {
 }
 CHECK_GROUP = {
     "onpage": "on_page", "social": "on_page",
-    "schema_validation": "schema",
+    "schema_validation": "schema", "ecommerce_schema": "schema",
     "ai_search_access": "geo",
     "canonical": "technical", "robots": "technical", "sitemap": "technical", "security": "technical",
     "redirects": "technical", "broken_links": "technical", "hreflang": "technical",
@@ -1346,7 +1347,7 @@ CHECK_GROUP = {
     "search_performance": "on_page",
 }
 # Structure checks report findings but carry no score: shown, never weighted.
-DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture", "search_performance")
+DISPLAY_ONLY_CHECKS = ("page_types", "navigation", "architecture", "search_performance", "ecommerce_schema")
 CONFIDENCE_LABELS = ("Confirmed", "Likely", "Hypothesis")
 
 # Who acts on a finding. The vocabulary is the recommendation register's
@@ -1370,7 +1371,7 @@ LANE_REASONS = {
 # references/procedures/02-full-site-audit.md (Mode 3). tests pin that every
 # check has one.
 CHECK_LANE = {
-    "onpage": "Auto", "social": "Auto", "schema_validation": "Auto", "image_seo": "Auto",
+    "onpage": "Auto", "social": "Auto", "schema_validation": "Auto", "ecommerce_schema": "Auto", "image_seo": "Auto",
     "internal_links": "Auto", "broken_links": "Auto", "navigation": "Auto", "readability": "Auto",
     "content_quality": "Auto", "article": "Auto", "citability": "Auto", "llms_txt": "Auto",
     "sitemap": "Auto", "indexnow_probe": "Auto", "local_signals": "Auto",
